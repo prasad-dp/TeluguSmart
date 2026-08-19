@@ -1,10 +1,6 @@
 name: Build Android APK & AAB
 
 on:
-  push:
-    branches: [ main, master ]
-  pull_request:
-    branches: [ main, master ]
   workflow_dispatch:
 
 jobs:
@@ -24,6 +20,8 @@ jobs:
 
       - name: Setup Gradle
         uses: gradle/actions/setup-gradle@v4
+        with:
+          validate-wrappers: false
 
       - name: Grant execute permission for gradlew
         run: chmod +x gradlew
