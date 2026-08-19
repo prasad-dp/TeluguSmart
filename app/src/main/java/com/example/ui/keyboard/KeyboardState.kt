@@ -2,8 +2,9 @@ package com.example.ui.keyboard
 
 enum class KeyboardLayoutMode(val displayName: String, val shortName: String) {
     TENGLISH("Telugu (Tenglish)", "తె-EN"),
-    NATIVE_TELUGU("Telugu (Native)", "తెలుగు"),
     ENGLISH("English (QWERTY)", "EN"),
+    NATIVE_TELUGU("Telugu (Native)", "తెలుగు"),
+    HANDWRITING("Handwriting (వ్రాత)", "వ్రాత"),
     SYMBOLS("Numbers & Symbols", "?123"),
     MORE_SYMBOLS("More Symbols", "=/<")
 }

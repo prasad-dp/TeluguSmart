@@ -15,6 +15,7 @@ import androidx.compose.animation.slideOutVertically
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.wrapContentHeight
@@ -33,9 +34,21 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.example.data.ClipboardSnippet
+import com.example.data.KeyboardEffectType
 import com.example.data.KeyboardPreferences
+import com.example.data.OneHandedMode
+import com.example.engine.SoundFeedbackHelper
 import com.example.engine.TeluguTransliterationEngine
 import com.example.model.TeluguMemeSticker
+import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.CompareArrows
+import androidx.compose.material.icons.filled.Fullscreen
+import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
+import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.Arrangement
 import kotlinx.coroutines.launch
 import java.util.Locale
 
@@ -52,19 +65,42 @@ fun KeyboardRootView(
     onTogglePinClipboard: ((ClipboardSnippet) -> Unit)? = null,
     onDeleteClipboard: ((ClipboardSnippet) -> Unit)? = null,
     onClearUnpinnedClipboard: (() -> Unit)? = null,
-    onLearnUserWord: ((String, String) -> Unit)? = null
+    onLearnUserWord: ((String, String) -> Unit)? = null,
+    onDismissKeyboard: (() -> Unit)? = null
 ) {
     val context = LocalContext.current
     val coroutineScope = rememberCoroutineScope()
-    val palette = remember(preferences.themeType) { KeyboardThemeColors.getPalette(preferences.themeType) }
+    val palette = remember(preferences.themeType, preferences.customAccentColor) {
+        KeyboardThemeColors.getPalette(preferences.themeType, preferences.customAccentColor)
+    }
 
     var layoutMode by remember { mutableStateOf(KeyboardLayoutMode.TENGLISH) }
     var activePanel by remember { mutableStateOf(KeyboardPanel.NONE) }
     var isShifted by remember { mutableStateOf(false) }
     var isMoreSymbols by remember { mutableStateOf(false) }
+    var showChangeKeyboardDialog by remember { mutableStateOf(false) }
+    var oneHandedMode by remember(preferences.oneHandedMode) { mutableStateOf(preferences.oneHandedMode) }
+
+    LaunchedEffect(Unit) {
+        SoundFeedbackHelper.initialize(context)
+    }
 
     // Guninthalu Popover state
     var selectedConsonantForPopup by remember { mutableStateOf<String?>(null) }
+
+    // Live Key Tap Effect trigger timestamp
+    var lastKeyTapTime by remember { mutableStateOf(0L) }
+    val triggerKeyEffect = {
+        if (preferences.activeEffect != KeyboardEffectType.NONE) {
+            lastKeyTapTime = System.currentTimeMillis()
+        }
+        if (preferences.keySoundFeedback) {
+            SoundFeedbackHelper.playKeySound(preferences.soundProfile)
+        }
+        if (preferences.keyHapticFeedback) {
+            SoundFeedbackHelper.triggerHaptic(preferences.hapticStrength)
+        }
+    }
 
     // Internal typing buffer for Tenglish transliteration
     var activeComposingToken by remember { mutableStateOf("") }
@@ -173,6 +209,7 @@ fun KeyboardRootView(
 
     KeyboardBackgroundSurface(
         presetId = preferences.customPhotoPreset,
+        customPhotoUri = preferences.customPhotoUri,
         customDarkness = preferences.customPhotoDarkness,
         basePalette = palette,
         modifier = modifier.fillMaxWidth().wrapContentHeight()
@@ -385,113 +422,219 @@ fun KeyboardRootView(
                 }
 
                 KeyboardPanel.NONE -> {
-                    // Render Main Keyboards
-                    when (layoutMode) {
-                        KeyboardLayoutMode.TENGLISH, KeyboardLayoutMode.ENGLISH -> {
-                            TenglishKeyGrid(
+                    // Render Main Keyboards with One-Handed Mode support
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        if (oneHandedMode == OneHandedMode.RIGHT) {
+                            OneHandedSideBar(
                                 palette = palette,
-                                preferences = preferences,
-                                isShifted = isShifted,
-                                onKeyPress = { char ->
-                                    if (layoutMode == KeyboardLayoutMode.TENGLISH) {
-                                        activeComposingToken += char
-                                    } else {
-                                        commitTextInternal(char)
-                                    }
-                                    if (isShifted) isShifted = false
-                                },
-                                onShiftToggle = { isShifted = !isShifted },
-                                onBackspace = {
-                                    if (activeComposingToken.isNotEmpty()) {
-                                        activeComposingToken = activeComposingToken.dropLast(1)
-                                    } else {
-                                        deleteBackInternal()
-                                    }
-                                },
-                                onBackspaceSwipeDelete = {
-                                    activeComposingToken = ""
-                                    deleteWordInternal()
-                                },
-                                onSpacePress = {
-                                    if (activeComposingToken.isNotEmpty()) {
-                                        val wordToCommit = teluguSug.ifEmpty { activeComposingToken }
-                                        commitTextInternal(wordToCommit + " ")
-                                        onLearnUserWord?.invoke(wordToCommit, activeComposingToken)
-                                        previousCommittedWord = wordToCommit
-                                        activeComposingToken = ""
-                                    } else {
-                                        commitTextInternal(" ")
-                                    }
-                                },
-                                onSpaceCursorDrag = { dragDelta ->
-                                    if (dragDelta > 15f) moveCursorInternal(1)
-                                    else if (dragDelta < -15f) moveCursorInternal(-1)
-                                },
-                                onEnterPress = {
-                                    if (activeComposingToken.isNotEmpty()) {
-                                        commitTextInternal(teluguSug.ifEmpty { activeComposingToken })
-                                        activeComposingToken = ""
-                                    }
-                                    commitTextInternal("\n")
-                                },
-                                onSwitchToSymbols = { layoutMode = KeyboardLayoutMode.SYMBOLS },
-                                onSwitchLayout = {
-                                    layoutMode = if (layoutMode == KeyboardLayoutMode.TENGLISH) {
-                                        KeyboardLayoutMode.NATIVE_TELUGU
-                                    } else {
-                                        KeyboardLayoutMode.TENGLISH
-                                    }
+                                onExpand = { oneHandedMode = OneHandedMode.OFF },
+                                onSwitchSide = { oneHandedMode = OneHandedMode.LEFT },
+                                modifier = Modifier.width(48.dp)
+                            )
+                        }
+
+                        Box(modifier = Modifier.weight(1f)) {
+                            when (layoutMode) {
+                                KeyboardLayoutMode.TENGLISH, KeyboardLayoutMode.ENGLISH -> {
+                                    TenglishKeyGrid(
+                                        palette = palette,
+                                        preferences = preferences,
+                                        isShifted = isShifted,
+                                        isEnglish = (layoutMode == KeyboardLayoutMode.ENGLISH),
+                                        onKeyPress = { char ->
+                                            triggerKeyEffect()
+                                            if (layoutMode == KeyboardLayoutMode.TENGLISH) {
+                                                activeComposingToken += char
+                                            } else {
+                                                commitTextInternal(char)
+                                            }
+                                            if (isShifted) isShifted = false
+                                        },
+                                        onShiftToggle = { isShifted = !isShifted },
+                                        onBackspace = {
+                                            triggerKeyEffect()
+                                            if (activeComposingToken.isNotEmpty()) {
+                                                activeComposingToken = activeComposingToken.dropLast(1)
+                                            } else {
+                                                deleteBackInternal()
+                                            }
+                                        },
+                                        onBackspaceSwipeDelete = {
+                                            triggerKeyEffect()
+                                            activeComposingToken = ""
+                                            deleteWordInternal()
+                                        },
+                                        onSpacePress = {
+                                            triggerKeyEffect()
+                                            if (activeComposingToken.isNotEmpty()) {
+                                                val wordToCommit = teluguSug.ifEmpty { activeComposingToken }
+                                                commitTextInternal(wordToCommit + " ")
+                                                onLearnUserWord?.invoke(wordToCommit, activeComposingToken)
+                                                previousCommittedWord = wordToCommit
+                                                activeComposingToken = ""
+                                            } else {
+                                                commitTextInternal(" ")
+                                            }
+                                        },
+                                        onSpaceLongPress = {
+                                            showChangeKeyboardDialog = true
+                                        },
+                                        onSpaceCursorDrag = { dragDelta ->
+                                            if (dragDelta > 15f) moveCursorInternal(1)
+                                            else if (dragDelta < -15f) moveCursorInternal(-1)
+                                        },
+                                        onEnterPress = {
+                                            triggerKeyEffect()
+                                            if (activeComposingToken.isNotEmpty()) {
+                                                commitTextInternal(teluguSug.ifEmpty { activeComposingToken })
+                                                activeComposingToken = ""
+                                            }
+                                            commitTextInternal("\n")
+                                        },
+                                        onSwitchToSymbols = { layoutMode = KeyboardLayoutMode.SYMBOLS },
+                                        onSwitchLayout = {
+                                            layoutMode = if (layoutMode == KeyboardLayoutMode.TENGLISH) {
+                                                KeyboardLayoutMode.NATIVE_TELUGU
+                                            } else {
+                                                KeyboardLayoutMode.TENGLISH
+                                            }
+                                        }
+                                    )
                                 }
-                            )
+
+                                KeyboardLayoutMode.NATIVE_TELUGU -> {
+                                    NativeTeluguKeyGrid(
+                                        palette = palette,
+                                        preferences = preferences,
+                                        isShifted = isShifted,
+                                        onKeyPress = { char ->
+                                            triggerKeyEffect()
+                                            commitTextInternal(char)
+                                            if (isShifted) isShifted = false
+                                        },
+                                        onReplaceLastCharAndCommit = { newChar ->
+                                            triggerKeyEffect()
+                                            deleteBackInternal()
+                                            commitTextInternal(newChar)
+                                        },
+                                        onOpenGuninthaluPopup = { consonant ->
+                                            triggerKeyEffect()
+                                            selectedConsonantForPopup = consonant
+                                        },
+                                        onShiftToggle = { isShifted = !isShifted },
+                                        onBackspace = {
+                                            triggerKeyEffect()
+                                            deleteBackInternal()
+                                        },
+                                        onBackspaceSwipeDelete = {
+                                            triggerKeyEffect()
+                                            deleteWordInternal()
+                                        },
+                                        onSpacePress = {
+                                            triggerKeyEffect()
+                                            commitTextInternal(" ")
+                                        },
+                                        onSpaceLongPress = {
+                                            showChangeKeyboardDialog = true
+                                        },
+                                        onSpaceCursorDrag = { dragDelta ->
+                                            if (dragDelta > 15f) moveCursorInternal(1)
+                                            else if (dragDelta < -15f) moveCursorInternal(-1)
+                                        },
+                                        onEnterPress = {
+                                            triggerKeyEffect()
+                                            commitTextInternal("\n")
+                                        },
+                                        onSwitchToSymbols = { layoutMode = KeyboardLayoutMode.SYMBOLS },
+                                        onSwitchLayout = { layoutMode = KeyboardLayoutMode.TENGLISH },
+                                        onDismissKeyboard = onDismissKeyboard
+                                    )
+                                }
+
+                                KeyboardLayoutMode.HANDWRITING -> {
+                                    HandwritingPadSheet(
+                                        palette = palette,
+                                        preferences = preferences,
+                                        onInsertChar = { char ->
+                                            triggerKeyEffect()
+                                            commitTextInternal(char)
+                                        },
+                                        onBackspace = {
+                                            triggerKeyEffect()
+                                            deleteBackInternal()
+                                        },
+                                        onSpace = {
+                                            triggerKeyEffect()
+                                            commitTextInternal(" ")
+                                        },
+                                        onEnter = {
+                                            triggerKeyEffect()
+                                            commitTextInternal("\n")
+                                        },
+                                        onSwitchToKeyboard = { layoutMode = KeyboardLayoutMode.TENGLISH }
+                                    )
+                                }
+
+                                KeyboardLayoutMode.SYMBOLS, KeyboardLayoutMode.MORE_SYMBOLS -> {
+                                    SymbolsKeyGrid(
+                                        palette = palette,
+                                        preferences = preferences,
+                                        isMoreSymbols = isMoreSymbols,
+                                        onKeyPress = { char ->
+                                            triggerKeyEffect()
+                                            commitTextInternal(char)
+                                        },
+                                        onToggleMoreSymbols = { isMoreSymbols = !isMoreSymbols },
+                                        onBackspace = {
+                                            triggerKeyEffect()
+                                            deleteBackInternal()
+                                        },
+                                        onBackspaceSwipeDelete = {
+                                            triggerKeyEffect()
+                                            deleteWordInternal()
+                                        },
+                                        onSpacePress = {
+                                            triggerKeyEffect()
+                                            commitTextInternal(" ")
+                                        },
+                                        onSpaceLongPress = {
+                                            showChangeKeyboardDialog = true
+                                        },
+                                        onSpaceCursorDrag = { dragDelta ->
+                                            if (dragDelta > 15f) moveCursorInternal(1)
+                                            else if (dragDelta < -15f) moveCursorInternal(-1)
+                                        },
+                                        onEnterPress = {
+                                            triggerKeyEffect()
+                                            commitTextInternal("\n")
+                                        },
+                                        onSwitchToLetters = { layoutMode = KeyboardLayoutMode.TENGLISH }
+                                    )
+                                }
+                            }
                         }
 
-                        KeyboardLayoutMode.NATIVE_TELUGU -> {
-                            NativeTeluguKeyGrid(
+                        if (oneHandedMode == OneHandedMode.LEFT) {
+                            OneHandedSideBar(
                                 palette = palette,
-                                preferences = preferences,
-                                isShifted = isShifted,
-                                onKeyPress = { char ->
-                                    commitTextInternal(char)
-                                    if (isShifted) isShifted = false
-                                },
-                                onOpenGuninthaluPopup = { consonant ->
-                                    selectedConsonantForPopup = consonant
-                                },
-                                onShiftToggle = { isShifted = !isShifted },
-                                onBackspace = { deleteBackInternal() },
-                                onBackspaceSwipeDelete = { deleteWordInternal() },
-                                onSpacePress = { commitTextInternal(" ") },
-                                onSpaceCursorDrag = { dragDelta ->
-                                    if (dragDelta > 15f) moveCursorInternal(1)
-                                    else if (dragDelta < -15f) moveCursorInternal(-1)
-                                },
-                                onEnterPress = { commitTextInternal("\n") },
-                                onSwitchToSymbols = { layoutMode = KeyboardLayoutMode.SYMBOLS },
-                                onSwitchLayout = { layoutMode = KeyboardLayoutMode.TENGLISH }
-                            )
-                        }
-
-                        KeyboardLayoutMode.SYMBOLS, KeyboardLayoutMode.MORE_SYMBOLS -> {
-                            SymbolsKeyGrid(
-                                palette = palette,
-                                preferences = preferences,
-                                isMoreSymbols = isMoreSymbols,
-                                onKeyPress = { char -> commitTextInternal(char) },
-                                onToggleMoreSymbols = { isMoreSymbols = !isMoreSymbols },
-                                onBackspace = { deleteBackInternal() },
-                                onBackspaceSwipeDelete = { deleteWordInternal() },
-                                onSpacePress = { commitTextInternal(" ") },
-                                onSpaceCursorDrag = { dragDelta ->
-                                    if (dragDelta > 15f) moveCursorInternal(1)
-                                    else if (dragDelta < -15f) moveCursorInternal(-1)
-                                },
-                                onEnterPress = { commitTextInternal("\n") },
-                                onSwitchToLetters = { layoutMode = KeyboardLayoutMode.TENGLISH }
+                                onExpand = { oneHandedMode = OneHandedMode.OFF },
+                                onSwitchSide = { oneHandedMode = OneHandedMode.RIGHT },
+                                modifier = Modifier.width(48.dp)
                             )
                         }
                     }
                 }
             }
+
+            // Realtime visual key tap animation overlay
+            KeyEffectLayer(
+                effectType = preferences.activeEffect,
+                triggerTime = lastKeyTapTime,
+                modifier = Modifier.matchParentSize()
+            )
 
             // Dynamic Guninthalu Floating Popover
             selectedConsonantForPopup?.let { consonant ->
@@ -503,6 +646,22 @@ fun KeyboardRootView(
                         selectedConsonantForPopup = null
                     },
                     onDismiss = { selectedConsonantForPopup = null }
+                )
+            }
+
+            // Quick Change Keyboard Selector Dialog (Long press spacebar feature)
+            if (showChangeKeyboardDialog) {
+                ChangeKeyboardDialog(
+                    currentMode = layoutMode,
+                    palette = palette,
+                    onSelectMode = { newMode ->
+                        layoutMode = newMode
+                        activeComposingToken = ""
+                        showChangeKeyboardDialog = false
+                    },
+                    onDismiss = {
+                        showChangeKeyboardDialog = false
+                    }
                 )
             }
         }
@@ -526,5 +685,49 @@ private fun VoiceTypingBanner(
             fontWeight = androidx.compose.ui.text.font.FontWeight.Bold,
             color = palette.accent
         )
+    }
+}
+
+@Composable
+private fun OneHandedSideBar(
+    palette: KeyboardPalette,
+    onExpand: () -> Unit,
+    onSwitchSide: () -> Unit,
+    modifier: Modifier = Modifier
+) {
+    Column(
+        modifier = modifier
+            .background(palette.specialKeyBackground.copy(alpha = 0.5f))
+            .padding(vertical = 12.dp, horizontal = 2.dp),
+        horizontalAlignment = Alignment.CenterHorizontally,
+        verticalArrangement = Arrangement.spacedBy(16.dp, Alignment.CenterVertically)
+    ) {
+        IconButton(
+            onClick = onExpand,
+            modifier = Modifier
+                .size(40.dp)
+                .background(palette.keyBackground, CircleShape)
+        ) {
+            Icon(
+                imageVector = Icons.Default.Fullscreen,
+                contentDescription = "Expand Full Width",
+                tint = palette.keyText,
+                modifier = Modifier.size(22.dp)
+            )
+        }
+
+        IconButton(
+            onClick = onSwitchSide,
+            modifier = Modifier
+                .size(40.dp)
+                .background(palette.keyBackground, CircleShape)
+        ) {
+            Icon(
+                imageVector = Icons.AutoMirrored.Filled.CompareArrows,
+                contentDescription = "Switch Side",
+                tint = palette.accent,
+                modifier = Modifier.size(22.dp)
+            )
+        }
     }
 }

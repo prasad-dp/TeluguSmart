@@ -65,3 +65,10 @@ fun MyApplicationTheme(
         content = content
     )
 }
+
+@Composable
+fun TeluguSmartTheme(
+    darkTheme: Boolean = false,
+    dynamicColor: Boolean = false,
+    content: @Composable () -> Unit,
+) = MyApplicationTheme(darkTheme = darkTheme, dynamicColor = dynamicColor, content = content)

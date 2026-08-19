@@ -93,16 +93,24 @@ class MainActivity : ComponentActivity() {
         val repository = TeluguSmartApplication.instance.repository
 
         setContent {
-            var isDarkMode by remember { mutableStateOf(false) } // Default is Light Mode as requested
-            var showSetupWizard by remember { mutableStateOf(false) }
+            val context = LocalContext.current
+            val sharedPrefs = remember { context.getSharedPreferences("telugu_smart_prefs", Context.MODE_PRIVATE) }
+            var isDarkMode by remember { mutableStateOf(sharedPrefs.getBoolean("dark_mode", false)) }
+            var isSetupDone by remember { mutableStateOf(sharedPrefs.getBoolean("setup_completed", false)) }
+            var showSetupWizard by remember { mutableStateOf(!isSetupDone) }
             var currentTab by remember { mutableStateOf(MainTab.LAYOUTS) }
             var showMenu by remember { mutableStateOf(false) }
 
-            val preferences: KeyboardPreferences by repository.preferences.collectAsState()
-            val scope = rememberCoroutineScope()
-            val context = LocalContext.current
+            val toggleDarkMode = {
+                val updated = !isDarkMode
+                isDarkMode = updated
+                sharedPrefs.edit().putBoolean("dark_mode", updated).apply()
+            }
 
-            // Check if IME is already default on device
+            val preferences: KeyboardPreferences by repository.preferences.collectAsState(initial = KeyboardPreferences())
+            val scope = rememberCoroutineScope()
+
+            // Check if IME is enabled/selected
             val checkImeActive = {
                 val imm = context.getSystemService(Context.INPUT_METHOD_SERVICE) as? InputMethodManager
                 val enabledList = imm?.enabledInputMethodList ?: emptyList()
@@ -112,8 +120,10 @@ class MainActivity : ComponentActivity() {
                     Settings.Secure.DEFAULT_INPUT_METHOD
                 ) ?: ""
                 val isSelected = currentIme.contains(context.packageName)
-                if (!isEnabled || !isSelected) {
-                    showSetupWizard = true
+                if (isEnabled && isSelected) {
+                    isSetupDone = true
+                    sharedPrefs.edit().putBoolean("setup_completed", true).apply()
+                    showSetupWizard = false
                 }
             }
 
@@ -138,8 +148,10 @@ class MainActivity : ComponentActivity() {
                 if (showSetupWizard) {
                     SetupWizardScreen(
                         isDarkMode = isDarkMode,
-                        onToggleDarkMode = { isDarkMode = !isDarkMode },
+                        onToggleDarkMode = toggleDarkMode,
                         onComplete = {
+                            isSetupDone = true
+                            sharedPrefs.edit().putBoolean("setup_completed", true).apply()
                             showSetupWizard = false
                         }
                     )
@@ -173,7 +185,7 @@ class MainActivity : ComponentActivity() {
                                 actions = {
                                     // Dark Mode Toggle on EVERY page as requested!
                                     IconButton(
-                                        onClick = { isDarkMode = !isDarkMode },
+                                        onClick = toggleDarkMode,
                                         modifier = Modifier.testTag("top_bar_dark_mode_toggle")
                                     ) {
                                         Icon(

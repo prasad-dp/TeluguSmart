@@ -1,6 +1,15 @@
 package com.example.ui.screens
 
+import android.content.Context
+import android.net.Uri
 import android.widget.Toast
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
+import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
+import androidx.compose.animation.slideInVertically
+import androidx.compose.animation.slideOutVertically
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
@@ -16,68 +25,84 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.grid.GridCells
 import androidx.compose.foundation.lazy.grid.GridItemSpan
 import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
 import androidx.compose.foundation.lazy.grid.items
+import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.AddPhotoAlternate
 import androidx.compose.material.icons.filled.Check
+import androidx.compose.material.icons.filled.Close
+import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Download
+import androidx.compose.material.icons.filled.Image
+import androidx.compose.material.icons.filled.Keyboard
+import androidx.compose.material3.Button
+import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
+import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.ModalBottomSheet
+import androidx.compose.material3.Slider
+import androidx.compose.material3.SliderDefaults
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Switch
 import androidx.compose.material3.SwitchDefaults
 import androidx.compose.material3.Text
+import androidx.compose.material3.rememberModalBottomSheetState
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableFloatStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.toArgb
+import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import coil.compose.AsyncImage
+import com.example.TeluguSmartApplication
+import com.example.data.KeyboardEffectType
 import com.example.data.KeyboardPreferences
 import com.example.data.KeyboardThemeType
+import com.example.engine.TeluguTransliterationEngine
+import com.example.ui.keyboard.CustomWallpaperPresets
+import com.example.ui.keyboard.EffectCardItem
+import com.example.ui.keyboard.KeyboardRootView
+import com.example.ui.theme.BrandPrimary
+import kotlinx.coroutines.launch
 
-data class ThemeColorItem(
+data class ThemeColorCardItem(
     val id: String,
     val themeType: KeyboardThemeType,
     val name: String,
     val bg: Color,
     val text: Color,
-    val accent: Color,
-    val dots: List<Color> = emptyList()
+    val pillColor: Color,
+    val defaultAccent: Color,
+    val dots: List<Color>
 )
 
-data class ThemePatternItem(
-    val id: String,
-    val name: String,
-    val gradient: Brush,
-    val isDownloaded: Boolean = true
-)
-
-data class ThemeEffectItem(
-    val id: String,
-    val name: String,
-    val keyBg: Color,
-    val keyText: Color,
-    val hasShadow: Boolean,
-    val hasGlow: Boolean
-)
-
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun ThemePickerScreen(
     preferences: KeyboardPreferences,
@@ -85,400 +110,657 @@ fun ThemePickerScreen(
     isDarkMode: Boolean
 ) {
     val context = LocalContext.current
+    val coroutineScope = rememberCoroutineScope()
+    val app = context.applicationContext as? TeluguSmartApplication
+    val snippets by (app?.repository?.clipboardSnippets?.collectAsState(initial = emptyList())
+        ?: remember { mutableStateOf(emptyList()) })
+
     var selectedThemeType by remember { mutableStateOf(preferences.themeType) }
     var showKeyBorders by remember { mutableStateOf(preferences.keyBorderEnabled) }
+    var activeAccentColor by remember { 
+        mutableStateOf<Color?>(preferences.customAccentColor?.let { Color(it) })
+    }
+    
+    // Live Real-Time Keyboard Popup State (Starts false so user can browse all top features & effects comfortably)
+    var isKeyboardPoppedUp by remember { mutableStateOf(false) }
+    var testBufferText by remember { mutableStateOf("telugu") }
 
-    // Color swatches (Matching Screenshot 6)
-    val colorThemes = listOf(
-        ThemeColorItem("light_slate", KeyboardThemeType.CLEAN_LIGHT, "Slate Light", Color(0xFFE2E8F0), Color(0xFF0F172A), Color(0xFF2563EB), listOf(Color(0xFF60A5FA), Color(0xFF3B82F6), Color(0xFF1D4ED8))),
-        ThemeColorItem("ocean_blue", KeyboardThemeType.DESH_ROYAL_BLUE, "Ocean Blue", Color(0xFF1D4ED8), Color(0xFFFFFFFF), Color(0xFF60A5FA), listOf(Color(0xFF93C5FD), Color(0xFF60A5FA), Color(0xFFEF4444), Color(0xFFF59E0B))),
-        ThemeColorItem("dark_slate", KeyboardThemeType.MIDNIGHT_SLATE, "Slate Dark", Color(0xFF1E293B), Color(0xFFF8FAFC), Color(0xFF38BDF8), listOf(Color(0xFF64748B), Color(0xFF475569), Color(0xFF0284C7))),
-        ThemeColorItem("blush_pink", KeyboardThemeType.CHERRY_BLOSSOM_WHITE, "Blush Pink", Color(0xFFFCE7F3), Color(0xFF831843), Color(0xFFEC4899), listOf(Color(0xFFF472B6), Color(0xFFDB2777))),
-        ThemeColorItem("forest_slate", KeyboardThemeType.EMERALD_GREEN, "Forest Green", Color(0xFF1C2D27), Color(0xFF34D399), Color(0xFF10B981), listOf(Color(0xFF10B981), Color(0xFFF59E0B), Color(0xFFEF4444))),
-        ThemeColorItem("amoled_rainbow", KeyboardThemeType.PITCH_BLACK, "AMOLED Spectrum", Color(0xFF050811), Color(0xFF38BDF8), Color(0xFF06B6D4), listOf(Color(0xFF06B6D4), Color(0xFF10B981), Color(0xFFF59E0B), Color(0xFFEF4444), Color(0xFFEC4899)))
-    )
+    // Selected Category Filter for Background Images
+    var selectedBackgroundCategory by remember { mutableStateOf("All") }
+    var downloadedImageIds by remember { 
+        mutableStateOf(setOf("bg_hillstation_munnar", "bg_hills_green", "bg_cars_porsche")) 
+    }
 
-    // Patterns & Gradients (Matching Screenshot 7)
-    val patternThemes = listOf(
-        ThemePatternItem(
-            "pattern_poly", "Low-Poly Crystal",
-            Brush.linearGradient(listOf(Color(0xFF9333EA), Color(0xFF3B82F6), Color(0xFF06B6D4)))
+    // Custom Theme Customizer Sheet State
+    var showCustomThemeSheet by remember { mutableStateOf(false) }
+    var editingPhotoUri by remember { mutableStateOf<String?>(preferences.customPhotoUri) }
+    var editingPresetId by remember { mutableStateOf<String?>(preferences.customPhotoPreset) }
+    var editingDarkness by remember { mutableFloatStateOf(preferences.customPhotoDarkness) }
+    var editingKeyOpacity by remember { mutableFloatStateOf(preferences.keyOpacity) }
+
+    val photoPickerLauncher = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.GetContent()
+    ) { uri: Uri? ->
+        if (uri != null) {
+            editingPhotoUri = uri.toString()
+            editingPresetId = null
+            showCustomThemeSheet = true
+        }
+    }
+
+    // THE 6 CORE MULTI-COLOR THEME CARDS (Matching user screenshot)
+    val colorCards = listOf(
+        // Card 1: Slate Light / Dynamic Grey (Aa + 3 dots: Blue, Emerald, Gray)
+        ThemeColorCardItem(
+            id = "slate_grey",
+            themeType = KeyboardThemeType.CLEAN_LIGHT,
+            name = "Slate Grey",
+            bg = Color(0xFF8B95A5),
+            text = Color(0xFF1E293B),
+            pillColor = Color(0xFF717D91),
+            defaultAccent = Color(0xFF2563EB),
+            dots = listOf(Color(0xFF2563EB), Color(0xFF0D9488), Color(0xFF94A3B8))
         ),
-        ThemePatternItem(
-            "pattern_mint", "Mint Breeze",
-            Brush.linearGradient(listOf(Color(0xFF10B981), Color(0xFF059669), Color(0xFF047857)))
+        // Card 2: Royal Ocean Blue (Aa + 4 dots: Blue, Sky, Red, Amber)
+        ThemeColorCardItem(
+            id = "ocean_blue",
+            themeType = KeyboardThemeType.DESH_ROYAL_BLUE,
+            name = "Ocean Blue",
+            bg = Color(0xFF1D4ED8),
+            text = Color.White,
+            pillColor = Color(0xFF3B82F6),
+            defaultAccent = Color(0xFF2563EB),
+            dots = listOf(Color(0xFF2563EB), Color(0xFF0284C7), Color(0xFFEF4444), Color(0xFFF59E0B))
         ),
-        ThemePatternItem(
-            "pattern_leather", "Leather Texture",
-            Brush.linearGradient(listOf(Color(0xFF292524), Color(0xFF1C1917), Color(0xFF0C0A09)))
+        // Card 3: Slate Dark / Midnight (Aa + 3 dots: Cyan, Slate, Dark)
+        ThemeColorCardItem(
+            id = "slate_dark",
+            themeType = KeyboardThemeType.MIDNIGHT_SLATE,
+            name = "Slate Dark",
+            bg = Color(0xFF1E293B),
+            text = Color.White,
+            pillColor = Color(0xFF334155),
+            defaultAccent = Color(0xFF38BDF8),
+            dots = listOf(Color(0xFF38BDF8), Color(0xFF64748B), Color(0xFF0F172A))
         ),
-        ThemePatternItem(
-            "pattern_abstract", "Oil Colors",
-            Brush.linearGradient(listOf(Color(0xFF1E3A8A), Color(0xFFF59E0B), Color(0xFF10B981)))
+        // Card 4: Blush Soft Pink / Red (Aa + 2 dots: Rose, Red)
+        ThemeColorCardItem(
+            id = "blush_pink",
+            themeType = KeyboardThemeType.CHERRY_BLOSSOM_WHITE,
+            name = "Blush Soft",
+            bg = Color(0xFFE2E8F0),
+            text = Color(0xFFEF4444),
+            pillColor = Color(0xFFFECACA),
+            defaultAccent = Color(0xFFDC2626),
+            dots = listOf(Color(0xFFF43F5E), Color(0xFFDC2626))
         ),
-        ThemePatternItem(
-            "pattern_ocean", "Ocean Waves",
-            Brush.linearGradient(listOf(Color(0xFF0891B2), Color(0xFF06B6D4), Color(0xFF22D3EE))),
-            isDownloaded = false
+        // Card 5: Forest Green (Aa + 3 dots: Green, Amber, Red)
+        ThemeColorCardItem(
+            id = "forest_green",
+            themeType = KeyboardThemeType.EMERALD_GREEN,
+            name = "Forest Green",
+            bg = Color(0xFF23322B),
+            text = Color(0xFF22C55E),
+            pillColor = Color(0xFF1B2421),
+            defaultAccent = Color(0xFF22C55E),
+            dots = listOf(Color(0xFF22C55E), Color(0xFFF59E0B), Color(0xFFEF4444))
         ),
-        ThemePatternItem(
-            "pattern_nature", "Floral Sunset",
-            Brush.linearGradient(listOf(Color(0xFF0284C7), Color(0xFFEA580C), Color(0xFF7C2D12))),
-            isDownloaded = false
+        // Card 6: AMOLED Spectrum / Black (Aa + 6 rainbow dots: Cyan, Green, Orange, Red, Yellow, Purple)
+        ThemeColorCardItem(
+            id = "amoled_rainbow",
+            themeType = KeyboardThemeType.PITCH_BLACK,
+            name = "AMOLED Rainbow",
+            bg = Color(0xFF070B12),
+            text = Color(0xFF38BDF8),
+            pillColor = Color(0xFF0F172A),
+            defaultAccent = Color(0xFF06B6D4),
+            dots = listOf(Color(0xFF06B6D4), Color(0xFF22C55E), Color(0xFFF97316), Color(0xFFEF4444), Color(0xFFEAB308), Color(0xFFA855F7))
         )
     )
 
-    // Effects (Matching Screenshot 7)
-    val effectThemes = listOf(
-        ThemeEffectItem("fx_flat", "Standard Flat", Color(0xFF1E293B), Color.White, false, false),
-        ThemeEffectItem("fx_raised", "Raised 3D Keys", Color(0xFFFFFFFF), Color(0xFF0F172A), true, false),
-        ThemeEffectItem("fx_glow", "Neon Glow Keys", Color(0xFF0A0F1D), Color(0xFF38BDF8), false, true),
-        ThemeEffectItem("fx_glass", "Frosted Keycaps", Color(0xFFF1F5F9), Color(0xFF1E293B), true, false)
-    )
+    // Identify active selected card item
+    val activeCardItem = colorCards.find { it.themeType == selectedThemeType } ?: colorCards.first()
 
-    LazyVerticalGrid(
-        columns = GridCells.Fixed(3),
-        contentPadding = PaddingValues(start = 16.dp, end = 16.dp, top = 12.dp, bottom = 80.dp),
-        horizontalArrangement = Arrangement.spacedBy(10.dp),
-        verticalArrangement = Arrangement.spacedBy(12.dp),
-        modifier = Modifier
-            .fillMaxSize()
-            .testTag("themes_screen_grid")
-    ) {
-        // Section 1: My themes (Dashed Add Photo Button - Matching Screenshot 6)
-        item(span = { GridItemSpan(3) }) {
-            Text(
-                text = "My themes",
-                fontSize = 15.sp,
-                fontWeight = FontWeight.Bold,
-                color = MaterialTheme.colorScheme.onBackground,
-                modifier = Modifier.padding(top = 4.dp, bottom = 2.dp)
-            )
-        }
-
-        item {
-            Box(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .height(82.dp)
-                    .clip(RoundedCornerShape(10.dp))
-                    .background(if (isDarkMode) Color(0xFF161F30) else Color(0xFFF8FAFC))
-                    .border(
-                        1.5.dp,
-                        if (isDarkMode) Color(0xFF475569) else Color(0xFF94A3B8),
-                        RoundedCornerShape(10.dp)
-                    )
-                    .clickable {
-                        Toast.makeText(context, "Choose photo from gallery for custom keyboard background", Toast.LENGTH_SHORT).show()
-                    }
-                    .testTag("add_photo_theme_card"),
-                contentAlignment = Alignment.Center
-            ) {
-                Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                    Icon(
-                        imageVector = Icons.Default.AddPhotoAlternate,
-                        contentDescription = "Add Photo",
-                        tint = if (isDarkMode) Color(0xFF94A3B8) else Color(0xFF64748B),
-                        modifier = Modifier.size(26.dp)
-                    )
-                    Spacer(modifier = Modifier.height(4.dp))
+    Box(modifier = Modifier.fillMaxSize()) {
+        LazyVerticalGrid(
+            columns = GridCells.Fixed(3),
+            contentPadding = PaddingValues(
+                start = 16.dp,
+                end = 16.dp,
+                top = 12.dp,
+                bottom = if (isKeyboardPoppedUp) 350.dp else 120.dp
+            ),
+            horizontalArrangement = Arrangement.spacedBy(10.dp),
+            verticalArrangement = Arrangement.spacedBy(12.dp),
+            modifier = Modifier
+                .fillMaxSize()
+                .testTag("themes_screen_grid")
+        ) {
+            // SECTION: COLORS TITLE
+            item(span = { GridItemSpan(3) }) {
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(top = 4.dp, bottom = 4.dp),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
                     Text(
-                        text = "Add Photo",
-                        fontSize = 11.sp,
-                        fontWeight = FontWeight.Medium,
-                        color = if (isDarkMode) Color(0xFF94A3B8) else Color(0xFF64748B)
+                        text = "Colors",
+                        fontSize = 17.sp,
+                        fontWeight = FontWeight.Bold,
+                        color = MaterialTheme.colorScheme.onBackground
                     )
-                }
-            }
-        }
-
-        // Section 2: Default System Themes (Screenshot 6)
-        item(span = { GridItemSpan(3) }) {
-            Text(
-                text = "Default",
-                fontSize = 15.sp,
-                fontWeight = FontWeight.Bold,
-                color = MaterialTheme.colorScheme.onBackground,
-                modifier = Modifier.padding(top = 12.dp, bottom = 2.dp)
-            )
-        }
-
-        // System Auto
-        item {
-            DefaultThemeCard(
-                title = "System auto",
-                isSelected = selectedThemeType == KeyboardThemeType.MIDNIGHT_SLATE,
-                onClick = {
-                    selectedThemeType = KeyboardThemeType.MIDNIGHT_SLATE
-                    onUpdatePreferences(preferences.copy(themeType = KeyboardThemeType.MIDNIGHT_SLATE))
-                }
-            ) {
-                Row(modifier = Modifier.fillMaxSize()) {
-                    Box(modifier = Modifier.weight(1f).fillMaxSize().background(Color(0xFF1E293B)), contentAlignment = Alignment.Center) {
-                        Text("Aa", color = Color.White, fontSize = 12.sp, fontWeight = FontWeight.Bold)
-                    }
-                    Box(modifier = Modifier.weight(1f).fillMaxSize().background(Color(0xFFE2E8F0)), contentAlignment = Alignment.Center) {
-                        Text("Aa", color = Color(0xFF0F172A), fontSize = 12.sp, fontWeight = FontWeight.Bold)
-                    }
-                }
-            }
-        }
-
-        // Dark
-        item {
-            DefaultThemeCard(
-                title = "Dark",
-                isSelected = selectedThemeType == KeyboardThemeType.PITCH_BLACK,
-                onClick = {
-                    selectedThemeType = KeyboardThemeType.PITCH_BLACK
-                    onUpdatePreferences(preferences.copy(themeType = KeyboardThemeType.PITCH_BLACK))
-                }
-            ) {
-                Box(
-                    modifier = Modifier
-                        .fillMaxSize()
-                        .background(Color(0xFF0F172A)),
-                    contentAlignment = Alignment.Center
-                ) {
-                    Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                        Text("Aa", color = Color.White, fontSize = 14.sp, fontWeight = FontWeight.Bold)
-                        Spacer(modifier = Modifier.height(4.dp))
-                        Box(modifier = Modifier.width(36.dp).height(5.dp).background(Color(0xFF334155), RoundedCornerShape(2.dp)))
-                    }
-                }
-            }
-        }
-
-        // Light
-        item {
-            DefaultThemeCard(
-                title = "Light",
-                isSelected = selectedThemeType == KeyboardThemeType.CLEAN_LIGHT,
-                onClick = {
-                    selectedThemeType = KeyboardThemeType.CLEAN_LIGHT
-                    onUpdatePreferences(preferences.copy(themeType = KeyboardThemeType.CLEAN_LIGHT))
-                }
-            ) {
-                Box(
-                    modifier = Modifier
-                        .fillMaxSize()
-                        .background(Color(0xFFF1F5F9)),
-                    contentAlignment = Alignment.Center
-                ) {
-                    Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                        Text("Aa", color = Color(0xFF0F172A), fontSize = 14.sp, fontWeight = FontWeight.Bold)
-                        Spacer(modifier = Modifier.height(4.dp))
-                        Box(modifier = Modifier.width(36.dp).height(5.dp).background(Color(0xFFCBD5E1), RoundedCornerShape(2.dp)))
-                    }
-                }
-            }
-        }
-
-        // Dynamic / Accent
-        item {
-            DefaultThemeCard(
-                title = "Dynamic",
-                isSelected = selectedThemeType == KeyboardThemeType.SAFFRON_ORANGE,
-                onClick = {
-                    selectedThemeType = KeyboardThemeType.SAFFRON_ORANGE
-                    onUpdatePreferences(preferences.copy(themeType = KeyboardThemeType.SAFFRON_ORANGE))
-                }
-            ) {
-                Box(
-                    modifier = Modifier
-                        .fillMaxSize()
-                        .background(Color(0xFF271E18)),
-                    contentAlignment = Alignment.Center
-                ) {
-                    Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                        Text("Aa", color = Color(0xFFFFDBC8), fontSize = 14.sp, fontWeight = FontWeight.Bold)
-                        Spacer(modifier = Modifier.height(4.dp))
-                        Box(modifier = Modifier.width(36.dp).height(5.dp).background(Color(0xFF5D4037), RoundedCornerShape(2.dp)))
-                    }
-                }
-            }
-        }
-
-        // Section 3: Colors (Screenshot 6)
-        item(span = { GridItemSpan(3) }) {
-            Text(
-                text = "Colors",
-                fontSize = 15.sp,
-                fontWeight = FontWeight.Bold,
-                color = MaterialTheme.colorScheme.onBackground,
-                modifier = Modifier.padding(top = 12.dp, bottom = 2.dp)
-            )
-        }
-
-        items(colorThemes) { colorItem ->
-            val isSelected = selectedThemeType == colorItem.themeType
-            Card(
-                shape = RoundedCornerShape(10.dp),
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .height(82.dp)
-                    .clickable {
-                        selectedThemeType = colorItem.themeType
-                        onUpdatePreferences(preferences.copy(themeType = colorItem.themeType))
-                        Toast.makeText(context, "Applied ${colorItem.name} theme", Toast.LENGTH_SHORT).show()
-                    },
-                border = if (isSelected) androidx.compose.foundation.BorderStroke(2.dp, Color(0xFF059669)) else null
-            ) {
-                Box(
-                    modifier = Modifier
-                        .fillMaxSize()
-                        .background(colorItem.bg)
-                ) {
-                    // Accent colored dots
-                    Row(
-                        modifier = Modifier
-                            .align(Alignment.TopEnd)
-                            .padding(6.dp),
-                        horizontalArrangement = Arrangement.spacedBy(3.dp)
-                    ) {
-                        colorItem.dots.forEach { dotColor ->
-                            Box(
-                                modifier = Modifier
-                                    .size(6.dp)
-                                    .clip(CircleShape)
-                                    .background(dotColor)
-                            )
-                        }
-                    }
-
-                    // Main preview Aa
-                    Column(
-                        modifier = Modifier.align(Alignment.Center),
-                        horizontalAlignment = Alignment.CenterHorizontally
-                    ) {
-                        Text(
-                            text = "Aa",
-                            color = colorItem.text,
-                            fontSize = 14.sp,
-                            fontWeight = FontWeight.Bold
-                        )
-                        Spacer(modifier = Modifier.height(4.dp))
-                        Box(
-                            modifier = Modifier
-                                .width(36.dp)
-                                .height(5.dp)
-                                .background(colorItem.accent.copy(alpha = 0.5f), RoundedCornerShape(2.dp))
-                        )
-                    }
-
-                    if (isSelected) {
-                        Box(
-                            modifier = Modifier
-                                .align(Alignment.BottomEnd)
-                                .padding(4.dp)
-                                .size(16.dp)
-                                .clip(CircleShape)
-                                .background(Color(0xFF059669)),
-                            contentAlignment = Alignment.Center
+                    
+                    if (!isKeyboardPoppedUp) {
+                        Surface(
+                            shape = RoundedCornerShape(8.dp),
+                            color = BrandPrimary.copy(alpha = 0.12f),
+                            modifier = Modifier.clickable { isKeyboardPoppedUp = true }
                         ) {
-                            Icon(
-                                imageVector = Icons.Default.Check,
-                                contentDescription = "Selected",
-                                tint = Color.White,
-                                modifier = Modifier.size(11.dp)
-                            )
-                        }
-                    }
-                }
-            }
-        }
-
-        // Section 4: Effects (Screenshot 7)
-        item(span = { GridItemSpan(3) }) {
-            Text(
-                text = "Effects",
-                fontSize = 15.sp,
-                fontWeight = FontWeight.Bold,
-                color = MaterialTheme.colorScheme.onBackground,
-                modifier = Modifier.padding(top = 12.dp, bottom = 2.dp)
-            )
-        }
-
-        items(effectThemes) { effect ->
-            Card(
-                shape = RoundedCornerShape(10.dp),
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .height(82.dp)
-                    .clickable {
-                        Toast.makeText(context, "Applied ${effect.name}", Toast.LENGTH_SHORT).show()
-                    }
-            ) {
-                Box(
-                    modifier = Modifier
-                        .fillMaxSize()
-                        .background(if (isDarkMode) Color(0xFF0B101E) else Color(0xFFF1F5F9)),
-                    contentAlignment = Alignment.Center
-                ) {
-                    Row(
-                        horizontalArrangement = Arrangement.spacedBy(4.dp),
-                        verticalAlignment = Alignment.CenterVertically
-                    ) {
-                        listOf("q", "w", "e").forEach { letter ->
-                            Box(
-                                modifier = Modifier
-                                    .size(24.dp)
-                                    .clip(RoundedCornerShape(4.dp))
-                                    .background(effect.keyBg)
-                                    .then(
-                                        if (effect.hasGlow) Modifier.border(1.dp, Color(0xFF38BDF8), RoundedCornerShape(4.dp))
-                                        else Modifier
-                                    ),
-                                contentAlignment = Alignment.Center
+                            Row(
+                                modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp),
+                                verticalAlignment = Alignment.CenterVertically,
+                                horizontalArrangement = Arrangement.spacedBy(4.dp)
                             ) {
-                                Text(letter, color = effect.keyText, fontSize = 11.sp, fontWeight = FontWeight.Bold)
+                                Icon(Icons.Default.Keyboard, contentDescription = null, tint = BrandPrimary, modifier = Modifier.size(16.dp))
+                                Text("Preview Keyboard", fontSize = 11.5.sp, fontWeight = FontWeight.Bold, color = BrandPrimary)
                             }
                         }
                     }
                 }
             }
-        }
 
-        // Section 5: Patterns (Screenshot 7)
-        item(span = { GridItemSpan(3) }) {
-            Text(
-                text = "Patterns & Gradients",
-                fontSize = 15.sp,
-                fontWeight = FontWeight.Bold,
-                color = MaterialTheme.colorScheme.onBackground,
-                modifier = Modifier.padding(top = 12.dp, bottom = 2.dp)
-            )
-        }
-
-        items(patternThemes) { pattern ->
-            Card(
-                shape = RoundedCornerShape(10.dp),
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .height(82.dp)
-                    .clickable {
-                        Toast.makeText(context, "Applied ${pattern.name}", Toast.LENGTH_SHORT).show()
-                    }
-            ) {
-                Box(
+            // THE 6 MULTI-COLOR THEME CARDS (2 rows of 3 columns)
+            items(colorCards) { colorItem ->
+                val isSelected = selectedThemeType == colorItem.themeType && preferences.customPhotoPreset == null && preferences.customPhotoUri == null
+                
+                Card(
+                    shape = RoundedCornerShape(12.dp),
                     modifier = Modifier
-                        .fillMaxSize()
-                        .background(pattern.gradient),
-                    contentAlignment = Alignment.Center
+                        .fillMaxWidth()
+                        .height(86.dp)
+                        .clickable {
+                            selectedThemeType = colorItem.themeType
+                            activeAccentColor = colorItem.defaultAccent
+                            val newAccentHex = colorItem.defaultAccent.toArgb().toLong()
+                            onUpdatePreferences(
+                                preferences.copy(
+                                    themeType = colorItem.themeType,
+                                    customAccentColor = newAccentHex,
+                                    customPhotoPreset = null,
+                                    customPhotoUri = null
+                                )
+                            )
+                            isKeyboardPoppedUp = true
+                            Toast.makeText(context, "Selected ${colorItem.name}", Toast.LENGTH_SHORT).show()
+                        }
+                        .testTag("color_theme_${colorItem.id}"),
+                    border = if (isSelected) androidx.compose.foundation.BorderStroke(2.5.dp, BrandPrimary) else null,
+                    elevation = CardDefaults.cardElevation(defaultElevation = if (isSelected) 4.dp else 1.dp)
                 ) {
-                    if (!pattern.isDownloaded) {
+                    Box(
+                        modifier = Modifier
+                            .fillMaxSize()
+                            .background(colorItem.bg)
+                    ) {
+                        // Top-Right Color Dots (Multiple color variants in this card)
+                        Row(
+                            modifier = Modifier
+                                .align(Alignment.TopEnd)
+                                .padding(top = 7.dp, end = 7.dp),
+                            horizontalArrangement = Arrangement.spacedBy(3.dp)
+                        ) {
+                            colorItem.dots.forEach { dotColor ->
+                                Box(
+                                    modifier = Modifier
+                                        .size(6.5.dp)
+                                        .clip(CircleShape)
+                                        .background(dotColor)
+                                )
+                            }
+                        }
+
+                        // Center Aa text + spacebar indicator
+                        Column(
+                            modifier = Modifier.align(Alignment.Center),
+                            horizontalAlignment = Alignment.CenterHorizontally
+                        ) {
+                            Text(
+                                text = "Aa",
+                                color = colorItem.text,
+                                fontSize = 15.sp,
+                                fontWeight = FontWeight.Bold
+                            )
+                            Spacer(modifier = Modifier.height(3.dp))
+                            Box(
+                                modifier = Modifier
+                                    .width(38.dp)
+                                    .height(5.dp)
+                                    .background(colorItem.pillColor, RoundedCornerShape(2.dp))
+                            )
+                        }
+
+                        // Bottom-Right Accent Dot
                         Box(
                             modifier = Modifier
-                                .size(28.dp)
+                                .align(Alignment.BottomEnd)
+                                .padding(bottom = 7.dp, end = 7.dp)
+                                .size(8.dp)
                                 .clip(CircleShape)
-                                .background(Color.Black.copy(alpha = 0.35f)),
+                                .background(if (isSelected && activeAccentColor != null) activeAccentColor!! else colorItem.defaultAccent)
+                        )
+
+                        // Center White Checkmark if Selected
+                        if (isSelected) {
+                            Box(
+                                modifier = Modifier
+                                    .align(Alignment.Center)
+                                    .size(28.dp)
+                                    .clip(CircleShape)
+                                    .background(Color.Black.copy(alpha = 0.25f)),
+                                contentAlignment = Alignment.Center
+                            ) {
+                                Icon(
+                                    imageVector = Icons.Default.Check,
+                                    contentDescription = "Selected",
+                                    tint = Color.White,
+                                    modifier = Modifier.size(18.dp)
+                                )
+                            }
+                        }
+                    }
+                }
+            }
+
+            // SECTION: EFFECTS (Live Key Tap Glowing Feedback Effects)
+            item(span = { GridItemSpan(3) }) {
+                Column(modifier = Modifier.fillMaxWidth().padding(top = 10.dp, bottom = 4.dp)) {
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Column {
+                            Text(
+                                text = "Key Tap Effects",
+                                fontSize = 17.sp,
+                                fontWeight = FontWeight.Bold,
+                                color = MaterialTheme.colorScheme.onBackground
+                            )
+                            Text(
+                                text = "Choose an animation effect for key taps",
+                                fontSize = 11.5.sp,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant
+                            )
+                        }
+
+                        if (!isKeyboardPoppedUp) {
+                            Surface(
+                                shape = RoundedCornerShape(8.dp),
+                                color = BrandPrimary.copy(alpha = 0.12f),
+                                modifier = Modifier.clickable { isKeyboardPoppedUp = true }
+                            ) {
+                                Text(
+                                    text = "Test Live ⌨",
+                                    fontSize = 11.5.sp,
+                                    fontWeight = FontWeight.Bold,
+                                    color = BrandPrimary,
+                                    modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp)
+                                )
+                            }
+                        }
+                    }
+                    Spacer(modifier = Modifier.height(10.dp))
+
+                    LazyRow(
+                        horizontalArrangement = Arrangement.spacedBy(10.dp),
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .testTag("effects_lazy_row")
+                    ) {
+                        // Top Industry Architecture Key Tap Effects + Clean Default
+                        val curatedEffects = listOf(
+                            Pair(KeyboardEffectType.MORPH_LIGATURE, "⚡ <4ms Morph"),
+                            Pair(KeyboardEffectType.HAPTIC_3D_DEPTH, "🎯 <2ms 3D"),
+                            Pair(KeyboardEffectType.GLASS_BLOOM, "✨ <6ms Bloom"),
+                            Pair(KeyboardEffectType.SHADER_WAVE, "🌊 <8ms Wave"),
+                            Pair(KeyboardEffectType.MICRO_PARTICLES, "🎆 <8ms Particles"),
+                            Pair(KeyboardEffectType.CYBER_CYAN, "🔥 Popular"),
+                            Pair(KeyboardEffectType.AMBER_FIRE, "✨ Festive"),
+                            Pair(KeyboardEffectType.NEON_GREEN, "⚡ Neon"),
+                            Pair(KeyboardEffectType.RAINBOW_WAVE, "🌈 Chroma"),
+                            Pair(KeyboardEffectType.SPARKLE_STARS, "⭐ Golden"),
+                            Pair(KeyboardEffectType.NONE, "Clean")
+                        )
+                        items(curatedEffects) { (effectItem, effectBadge) ->
+                            val isEffectSelected = preferences.activeEffect == effectItem
+                            EffectCardItem(
+                                effect = effectItem,
+                                isSelected = isEffectSelected,
+                                badge = effectBadge,
+                                onClick = {
+                                    onUpdatePreferences(preferences.copy(activeEffect = effectItem))
+                                    isKeyboardPoppedUp = true
+                                    Toast.makeText(
+                                        context,
+                                        "${effectItem.displayName} applied • Tap keys below to test!",
+                                        Toast.LENGTH_SHORT
+                                    ).show()
+                                }
+                            )
+                        }
+                    }
+                }
+            }
+
+            // SECTION: MY THEMES & CUSTOM PHOTO STUDIO
+            item(span = { GridItemSpan(3) }) {
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(top = 16.dp, bottom = 2.dp),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Text(
+                        text = "My themes (నా థీమ్స్)",
+                        fontSize = 15.sp,
+                        fontWeight = FontWeight.Bold,
+                        color = MaterialTheme.colorScheme.onBackground
+                    )
+                    if (preferences.customPhotoPreset != null || preferences.customPhotoUri != null) {
+                        Text(
+                            text = "Customize",
+                            fontSize = 12.sp,
+                            fontWeight = FontWeight.Bold,
+                            color = BrandPrimary,
+                            modifier = Modifier
+                                .clickable {
+                                    editingPhotoUri = preferences.customPhotoUri
+                                    editingPresetId = preferences.customPhotoPreset
+                                    editingDarkness = preferences.customPhotoDarkness
+                                    editingKeyOpacity = preferences.keyOpacity
+                                    showCustomThemeSheet = true
+                                }
+                                .padding(horizontal = 4.dp, vertical = 2.dp)
+                        )
+                    }
+                }
+            }
+
+            // Add Custom Theme Card
+            item {
+                Box(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .height(86.dp)
+                        .clip(RoundedCornerShape(12.dp))
+                        .background(if (isDarkMode) Color(0xFF161F30) else Color(0xFFF8FAFC))
+                        .border(
+                            1.5.dp,
+                            BrandPrimary,
+                            RoundedCornerShape(12.dp)
+                        )
+                        .clickable {
+                            editingPhotoUri = null
+                            editingPresetId = editingPresetId ?: "tirupati_gold"
+                            showCustomThemeSheet = true
+                        }
+                        .testTag("add_photo_theme_card"),
+                    contentAlignment = Alignment.Center
+                ) {
+                    Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                        Box(
+                            modifier = Modifier
+                                .size(34.dp)
+                                .clip(CircleShape)
+                                .background(BrandPrimary.copy(alpha = 0.15f)),
                             contentAlignment = Alignment.Center
                         ) {
                             Icon(
-                                imageVector = Icons.Default.Download,
-                                contentDescription = "Download",
-                                tint = Color.White,
-                                modifier = Modifier.size(18.dp)
+                                imageVector = Icons.Default.AddPhotoAlternate,
+                                contentDescription = "Add Photo",
+                                tint = BrandPrimary,
+                                modifier = Modifier.size(20.dp)
+                            )
+                        }
+                        Spacer(modifier = Modifier.height(4.dp))
+                        Text(
+                            text = "Custom Theme",
+                            fontSize = 11.sp,
+                            fontWeight = FontWeight.Bold,
+                            color = BrandPrimary
+                        )
+                    }
+                }
+            }
+
+            // Custom Wallpaper Scenic Presets
+            items(CustomWallpaperPresets.PRESETS.take(5)) { preset ->
+                val isSelected = preferences.customPhotoPreset == preset.id && preferences.customPhotoUri == null
+                Card(
+                    shape = RoundedCornerShape(12.dp),
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .height(86.dp)
+                        .clickable {
+                            selectedThemeType = KeyboardThemeType.PITCH_BLACK
+                            onUpdatePreferences(
+                                preferences.copy(
+                                    customPhotoPreset = preset.id,
+                                    customPhotoUri = null,
+                                    customPhotoDarkness = preset.defaultDarkness
+                                )
+                            )
+                            isKeyboardPoppedUp = true
+                            Toast.makeText(context, "Applied ${preset.title}", Toast.LENGTH_SHORT).show()
+                        },
+                    border = if (isSelected) androidx.compose.foundation.BorderStroke(2.dp, BrandPrimary) else androidx.compose.foundation.BorderStroke(1.dp, if (isDarkMode) Color(0xFF334155) else Color(0xFFCBD5E1))
+                ) {
+                    Box(
+                        modifier = Modifier
+                            .fillMaxSize()
+                            .background(Brush.verticalGradient(preset.gradientColors))
+                    ) {
+                        Box(
+                            modifier = Modifier
+                                .matchParentSize()
+                                .background(Color.Black.copy(alpha = 0.35f))
+                        )
+                        Column(
+                            modifier = Modifier
+                                .align(Alignment.Center)
+                                .padding(4.dp),
+                            horizontalAlignment = Alignment.CenterHorizontally
+                        ) {
+                            Text(preset.emoji, fontSize = 20.sp)
+                            Spacer(modifier = Modifier.height(2.dp))
+                            Text(
+                                text = preset.title.split(" ").take(2).joinToString(" "),
+                                color = Color.White,
+                                fontSize = 10.sp,
+                                fontWeight = FontWeight.Bold,
+                                maxLines = 1
+                            )
+                        }
+
+                        if (isSelected) {
+                            Box(
+                                modifier = Modifier
+                                    .align(Alignment.BottomEnd)
+                                    .padding(4.dp)
+                                    .size(18.dp)
+                                    .clip(CircleShape)
+                                    .background(BrandPrimary),
+                                contentAlignment = Alignment.Center
+                            ) {
+                                Icon(
+                                    imageVector = Icons.Default.Check,
+                                    contentDescription = "Active",
+                                    tint = Color.White,
+                                    modifier = Modifier.size(12.dp)
+                                )
+                            }
+                        }
+                    }
+                }
+            }
+
+            // SECTION: BACKGROUND IMAGES (Single Heading with 15 Curated Wallpapers)
+            item(span = { GridItemSpan(3) }) {
+                Column(modifier = Modifier.fillMaxWidth().padding(top = 18.dp, bottom = 4.dp)) {
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Text(
+                            text = "Background images",
+                            fontSize = 17.sp,
+                            fontWeight = FontWeight.Bold,
+                            color = MaterialTheme.colorScheme.onBackground
+                        )
+                        Text(
+                            text = "15 Wallpapers",
+                            fontSize = 12.sp,
+                            fontWeight = FontWeight.SemiBold,
+                            color = BrandPrimary
+                        )
+                    }
+
+                    Spacer(modifier = Modifier.height(8.dp))
+
+                    // Category Filter Pills
+                    val categories = listOf("All", "Hill Stations", "Hills", "Cars", "Bikes", "Buildings", "Beaches")
+                    LazyRow(
+                        horizontalArrangement = Arrangement.spacedBy(8.dp),
+                        modifier = Modifier.fillMaxWidth()
+                    ) {
+                        items(categories) { cat ->
+                            val isCatSelected = selectedBackgroundCategory == cat
+                            Surface(
+                                shape = RoundedCornerShape(16.dp),
+                                color = if (isCatSelected) BrandPrimary else if (isDarkMode) Color(0xFF1E293B) else Color(0xFFF1F5F9),
+                                border = if (!isCatSelected) androidx.compose.foundation.BorderStroke(
+                                    1.dp,
+                                    if (isDarkMode) Color(0xFF334155) else Color(0xFFCBD5E1)
+                                ) else null,
+                                modifier = Modifier.clickable { selectedBackgroundCategory = cat }
+                            ) {
+                                Text(
+                                    text = cat,
+                                    fontSize = 12.sp,
+                                    fontWeight = if (isCatSelected) FontWeight.Bold else FontWeight.Medium,
+                                    color = if (isCatSelected) Color.White else MaterialTheme.colorScheme.onSurface,
+                                    modifier = Modifier.padding(horizontal = 12.dp, vertical = 6.dp)
+                                )
+                            }
+                        }
+                    }
+                }
+            }
+
+            // Filtered 15 Background Images in 3-column Grid
+            val filteredBackgrounds = if (selectedBackgroundCategory == "All") {
+                CustomWallpaperPresets.BACKGROUND_IMAGES
+            } else {
+                CustomWallpaperPresets.BACKGROUND_IMAGES.filter { it.category == selectedBackgroundCategory }
+            }
+
+            items(filteredBackgrounds) { bgImage ->
+                val isSelected = preferences.customPhotoUri == bgImage.imageUrl
+                val isDownloaded = downloadedImageIds.contains(bgImage.id) || isSelected
+
+                Card(
+                    shape = RoundedCornerShape(12.dp),
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .height(88.dp)
+                        .clickable {
+                            downloadedImageIds = downloadedImageIds + bgImage.id
+                            selectedThemeType = KeyboardThemeType.PITCH_BLACK
+                            onUpdatePreferences(
+                                preferences.copy(
+                                    customPhotoUri = bgImage.imageUrl,
+                                    customPhotoPreset = null,
+                                    customPhotoDarkness = bgImage.defaultDarkness,
+                                    themeType = KeyboardThemeType.PITCH_BLACK
+                                )
+                            )
+                            isKeyboardPoppedUp = true
+                            Toast.makeText(context, "Applied ${bgImage.title} background", Toast.LENGTH_SHORT).show()
+                        }
+                        .testTag("bg_card_${bgImage.id}"),
+                    border = if (isSelected) androidx.compose.foundation.BorderStroke(2.5.dp, BrandPrimary) else null,
+                    elevation = CardDefaults.cardElevation(defaultElevation = if (isSelected) 4.dp else 1.dp)
+                ) {
+                    Box(modifier = Modifier.fillMaxSize()) {
+                        // Background Wallpaper Image Loaded via Coil
+                        AsyncImage(
+                            model = bgImage.imageUrl,
+                            contentDescription = bgImage.title,
+                            modifier = Modifier.fillMaxSize(),
+                            contentScale = ContentScale.Crop
+                        )
+
+                        // Subtle darkening scrim for contrast
+                        Box(
+                            modifier = Modifier
+                                .fillMaxSize()
+                                .background(Color.Black.copy(alpha = 0.25f))
+                        )
+
+                        // Center Action: Checkmark if Selected, Download Icon if not
+                        if (isSelected) {
+                            Box(
+                                modifier = Modifier
+                                    .align(Alignment.Center)
+                                    .size(32.dp)
+                                    .clip(CircleShape)
+                                    .background(BrandPrimary),
+                                contentAlignment = Alignment.Center
+                            ) {
+                                Icon(
+                                    imageVector = Icons.Default.Check,
+                                    contentDescription = "Selected",
+                                    tint = Color.White,
+                                    modifier = Modifier.size(20.dp)
+                                )
+                            }
+                        } else {
+                            Box(
+                                modifier = Modifier
+                                    .align(Alignment.Center)
+                                    .size(30.dp)
+                                    .clip(CircleShape)
+                                    .background(Color.Black.copy(alpha = 0.45f)),
+                                contentAlignment = Alignment.Center
+                            ) {
+                                Icon(
+                                    imageVector = Icons.Default.Download,
+                                    contentDescription = "Download and Set",
+                                    tint = Color.White,
+                                    modifier = Modifier.size(17.dp)
+                                )
+                            }
+                        }
+
+                        // Bottom Title Overlay
+                        Box(
+                            modifier = Modifier
+                                .align(Alignment.BottomCenter)
+                                .fillMaxWidth()
+                                .background(Color.Black.copy(alpha = 0.55f))
+                                .padding(horizontal = 4.dp, vertical = 2.dp),
+                            contentAlignment = Alignment.Center
+                        ) {
+                            Text(
+                                text = bgImage.title,
+                                color = Color.White,
+                                fontSize = 9.5.sp,
+                                fontWeight = FontWeight.SemiBold,
+                                maxLines = 1
                             )
                         }
                     }
@@ -486,99 +768,424 @@ fun ThemePickerScreen(
             }
         }
 
-        // Section 6: Show Key Borders Toggle (Screenshot 6 & 7)
-        item(span = { GridItemSpan(3) }) {
-            Card(
-                colors = CardDefaults.cardColors(
-                    containerColor = MaterialTheme.colorScheme.surface
-                ),
-                shape = RoundedCornerShape(14.dp),
-                border = androidx.compose.foundation.BorderStroke(
-                    1.dp,
-                    if (isDarkMode) Color(0xFF334155) else Color(0xFFE2E8F0)
-                ),
+        // REALTIME LIVE KEYBOARD POPUP AT THE BOTTOM
+        AnimatedVisibility(
+            visible = isKeyboardPoppedUp,
+            enter = slideInVertically(initialOffsetY = { it }) + fadeIn(),
+            exit = slideOutVertically(targetOffsetY = { it }) + fadeOut(),
+            modifier = Modifier.align(Alignment.BottomCenter)
+        ) {
+            Surface(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .padding(vertical = 12.dp)
+                    .shadow(16.dp, RoundedCornerShape(topStart = 18.dp, topEnd = 18.dp))
+                    .testTag("theme_live_keyboard_container"),
+                shape = RoundedCornerShape(topStart = 18.dp, topEnd = 18.dp),
+                color = MaterialTheme.colorScheme.surface,
+                tonalElevation = 8.dp
             ) {
-                Row(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(horizontal = 16.dp, vertical = 12.dp),
-                    horizontalArrangement = Arrangement.SpaceBetween,
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    Text(
-                        text = "Show key borders",
-                        fontSize = 15.sp,
-                        fontWeight = FontWeight.Medium,
-                        color = MaterialTheme.colorScheme.onSurface
-                    )
-                    Switch(
-                        checked = showKeyBorders,
-                        onCheckedChange = { checked ->
-                            showKeyBorders = checked
-                            onUpdatePreferences(preferences.copy(keyBorderEnabled = checked))
+                Column(modifier = Modifier.fillMaxWidth()) {
+                    // Header Bar with Realtime status and Hide button
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .background(if (isDarkMode) Color(0xFF1E293B) else Color(0xFFE2E8F0))
+                            .padding(horizontal = 14.dp, vertical = 7.dp),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Row(
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.spacedBy(8.dp)
+                        ) {
+                            Box(
+                                modifier = Modifier
+                                    .size(9.dp)
+                                    .clip(CircleShape)
+                                    .background(Color(0xFF10B981))
+                            )
+                            Text(
+                                text = if (preferences.activeEffect != KeyboardEffectType.NONE) {
+                                    "Live Preview • ${preferences.activeEffect.displayName} Effect • టైప్ చేయండి"
+                                } else {
+                                    "Live Keyboard Preview • టైప్ చేసి చూడండి"
+                                },
+                                fontSize = 12.sp,
+                                fontWeight = FontWeight.Bold,
+                                color = if (isDarkMode) Color(0xFF34D399) else Color(0xFF047857)
+                            )
+                        }
+
+                        Row(
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.spacedBy(6.dp)
+                        ) {
+                            Text(
+                                text = "Hide ✕",
+                                fontSize = 12.sp,
+                                fontWeight = FontWeight.Bold,
+                                color = BrandPrimary,
+                                modifier = Modifier
+                                    .clip(RoundedCornerShape(6.dp))
+                                    .clickable { isKeyboardPoppedUp = false }
+                                    .padding(horizontal = 8.dp, vertical = 4.dp)
+                            )
+                        }
+                    }
+
+                    // Interactive Keyboard Root View showing theme in realtime
+                    KeyboardRootView(
+                        preferences = preferences,
+                        currentBufferText = testBufferText,
+                        onBufferTextChange = { newText ->
+                            testBufferText = newText
                         },
-                        colors = SwitchDefaults.colors(
-                            checkedThumbColor = Color.White,
-                            checkedTrackColor = Color(0xFF047857)
-                        ),
-                        modifier = Modifier.testTag("switch_show_key_borders")
+                        clipboardSnippets = snippets,
+                        onSaveClipboardText = { text ->
+                            app?.repository?.let { repo ->
+                                coroutineScope.launch {
+                                    repo.addClipboardText(text)
+                                }
+                            }
+                        },
+                        onTogglePinClipboard = { snippet ->
+                            app?.repository?.let { repo ->
+                                coroutineScope.launch {
+                                    repo.togglePinClipboard(snippet)
+                                }
+                            }
+                        },
+                        onDeleteClipboard = { snippet ->
+                            app?.repository?.let { repo ->
+                                coroutineScope.launch {
+                                    repo.deleteClipboardSnippet(snippet)
+                                }
+                            }
+                        },
+                        onClearUnpinnedClipboard = {
+                            app?.repository?.let { repo ->
+                                coroutineScope.launch {
+                                    repo.clearUnpinnedClipboard()
+                                }
+                            }
+                        },
+                        onLearnUserWord = { telugu, phonetic ->
+                            app?.repository?.let { repo ->
+                                coroutineScope.launch {
+                                    repo.insertOrUpdateWord(telugu, phonetic)
+                                }
+                            }
+                        },
+                        onDismissKeyboard = {
+                            isKeyboardPoppedUp = false
+                        }
                     )
                 }
             }
         }
     }
-}
 
-@Composable
-fun DefaultThemeCard(
-    title: String,
-    isSelected: Boolean,
-    onClick: () -> Unit,
-    content: @Composable () -> Unit
-) {
-    Column(
-        horizontalAlignment = Alignment.CenterHorizontally,
-        modifier = Modifier.fillMaxWidth()
-    ) {
-        Card(
-            shape = RoundedCornerShape(10.dp),
-            modifier = Modifier
-                .fillMaxWidth()
-                .height(72.dp)
-                .clickable(onClick = onClick),
-            border = if (isSelected) androidx.compose.foundation.BorderStroke(2.dp, Color(0xFF059669)) else null
+    // MODAL BOTTOM SHEET: CUSTOM THEME & PHOTO CREATOR
+    if (showCustomThemeSheet) {
+        ModalBottomSheet(
+            onDismissRequest = { showCustomThemeSheet = false },
+            sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true),
+            containerColor = MaterialTheme.colorScheme.surface
         ) {
-            Box(modifier = Modifier.fillMaxSize()) {
-                content()
-                if (isSelected) {
-                    Box(
-                        modifier = Modifier
-                            .align(Alignment.BottomEnd)
-                            .padding(4.dp)
-                            .size(16.dp)
-                            .clip(CircleShape)
-                            .background(Color(0xFF059669)),
-                        contentAlignment = Alignment.Center
-                    ) {
-                        Icon(
-                            imageVector = Icons.Default.Check,
-                            contentDescription = "Selected",
-                            tint = Color.White,
-                            modifier = Modifier.size(11.dp)
+            Column(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(start = 20.dp, end = 20.dp, bottom = 32.dp)
+            ) {
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Column {
+                        Text(
+                            text = "Custom Theme Studio",
+                            fontSize = 18.sp,
+                            fontWeight = FontWeight.Bold,
+                            color = MaterialTheme.colorScheme.onSurface
+                        )
+                        Text(
+                            text = "Choose your photo or scenic Telugu background",
+                            fontSize = 12.sp,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
                         )
                     }
+                    IconButton(onClick = { showCustomThemeSheet = false }) {
+                        Icon(Icons.Default.Close, contentDescription = "Close")
+                    }
+                }
+
+                Spacer(modifier = Modifier.height(16.dp))
+
+                // LIVE MINI KEYBOARD PREVIEW OVER BACKGROUND
+                Surface(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .height(140.dp)
+                        .clip(RoundedCornerShape(12.dp)),
+                    shape = RoundedCornerShape(12.dp)
+                ) {
+                    Box(modifier = Modifier.fillMaxSize()) {
+                        if (editingPhotoUri != null) {
+                            AsyncImage(
+                                model = editingPhotoUri,
+                                contentDescription = "Custom Image Preview",
+                                modifier = Modifier.fillMaxSize(),
+                                contentScale = ContentScale.Crop
+                            )
+                        } else {
+                            val activePreset = CustomWallpaperPresets.PRESETS.find { it.id == (editingPresetId ?: "tirupati_gold") }
+                                ?: CustomWallpaperPresets.PRESETS.first()
+                            Box(
+                                modifier = Modifier
+                                    .fillMaxSize()
+                                    .background(Brush.verticalGradient(activePreset.gradientColors))
+                            )
+                        }
+
+                        // Darkness filter
+                        Box(
+                            modifier = Modifier
+                                .fillMaxSize()
+                                .background(Color.Black.copy(alpha = editingDarkness.coerceIn(0.1f, 0.85f)))
+                        )
+
+                        // Simulated keyboard keys over background
+                        Column(
+                            modifier = Modifier
+                                .fillMaxSize()
+                                .padding(8.dp),
+                            verticalArrangement = Arrangement.SpaceEvenly
+                        ) {
+                            Row(
+                                modifier = Modifier.fillMaxWidth(),
+                                horizontalArrangement = Arrangement.SpaceEvenly
+                            ) {
+                                listOf("అ","ఆ","ఇ","ఈ","ఉ","ఊ","ఋ").forEach { char ->
+                                    Surface(
+                                        color = Color.White.copy(alpha = editingKeyOpacity),
+                                        shape = RoundedCornerShape(4.dp),
+                                        border = if (showKeyBorders) androidx.compose.foundation.BorderStroke(1.dp, Color.Black.copy(alpha = 0.2f)) else null,
+                                        modifier = Modifier.size(width = 38.dp, height = 26.dp)
+                                    ) {
+                                        Box(contentAlignment = Alignment.Center) {
+                                            Text(char, color = Color(0xFF0F172A), fontSize = 12.sp, fontWeight = FontWeight.Bold)
+                                        }
+                                    }
+                                }
+                            }
+                            Row(
+                                modifier = Modifier.fillMaxWidth(),
+                                horizontalArrangement = Arrangement.SpaceEvenly
+                            ) {
+                                listOf("క","ఖ","గ","ఘ","ఙ","చ").forEach { char ->
+                                    Surface(
+                                        color = Color.White.copy(alpha = editingKeyOpacity),
+                                        shape = RoundedCornerShape(4.dp),
+                                        border = if (showKeyBorders) androidx.compose.foundation.BorderStroke(1.dp, Color.Black.copy(alpha = 0.2f)) else null,
+                                        modifier = Modifier.size(width = 42.dp, height = 26.dp)
+                                    ) {
+                                        Box(contentAlignment = Alignment.Center) {
+                                            Text(char, color = Color(0xFF0F172A), fontSize = 12.sp, fontWeight = FontWeight.Bold)
+                                        }
+                                    }
+                                }
+                            }
+                            Row(
+                                modifier = Modifier.fillMaxWidth(),
+                                horizontalArrangement = Arrangement.Center
+                            ) {
+                                Surface(
+                                    color = Color.White.copy(alpha = editingKeyOpacity),
+                                    shape = RoundedCornerShape(4.dp),
+                                    modifier = Modifier.size(width = 160.dp, height = 24.dp)
+                                ) {
+                                    Box(contentAlignment = Alignment.Center) {
+                                        Text("స్పేస్ (Space)", color = Color(0xFF475569), fontSize = 10.sp)
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+
+                Spacer(modifier = Modifier.height(14.dp))
+
+                // Background Source Options
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.spacedBy(8.dp)
+                ) {
+                    Button(
+                        onClick = {
+                            photoPickerLauncher.launch("image/*")
+                        },
+                        colors = ButtonDefaults.buttonColors(
+                            containerColor = if (editingPhotoUri != null) BrandPrimary else MaterialTheme.colorScheme.surfaceVariant
+                        ),
+                        shape = RoundedCornerShape(8.dp),
+                        modifier = Modifier.weight(1f)
+                    ) {
+                        Icon(
+                            Icons.Default.Image,
+                            contentDescription = null,
+                            tint = if (editingPhotoUri != null) Color.White else MaterialTheme.colorScheme.onSurfaceVariant,
+                            modifier = Modifier.size(16.dp)
+                        )
+                        Spacer(modifier = Modifier.width(6.dp))
+                        Text(
+                            "Pick Gallery Photo",
+                            fontSize = 11.5.sp,
+                            color = if (editingPhotoUri != null) Color.White else MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                    }
+
+                    if (editingPhotoUri != null) {
+                        IconButton(
+                            onClick = {
+                                editingPhotoUri = null
+                                editingPresetId = "tirupati_gold"
+                            },
+                            modifier = Modifier.size(40.dp)
+                        ) {
+                            Icon(Icons.Default.Delete, contentDescription = "Clear Photo", tint = Color(0xFFEF4444))
+                        }
+                    }
+                }
+
+                Spacer(modifier = Modifier.height(12.dp))
+
+                Text(
+                    text = "Telugu Heritage & Nature Wallpapers:",
+                    fontSize = 12.sp,
+                    fontWeight = FontWeight.SemiBold,
+                    color = MaterialTheme.colorScheme.onSurface
+                )
+                Spacer(modifier = Modifier.height(6.dp))
+
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.spacedBy(6.dp)
+                ) {
+                    CustomWallpaperPresets.PRESETS.forEach { preset ->
+                        val isChosen = editingPresetId == preset.id && editingPhotoUri == null
+                        Surface(
+                            shape = RoundedCornerShape(8.dp),
+                            border = if (isChosen) androidx.compose.foundation.BorderStroke(2.dp, BrandPrimary) else androidx.compose.foundation.BorderStroke(1.dp, Color(0xFF64748B).copy(alpha = 0.3f)),
+                            modifier = Modifier
+                                .weight(1f)
+                                .height(46.dp)
+                                .clickable {
+                                    editingPhotoUri = null
+                                    editingPresetId = preset.id
+                                    editingDarkness = preset.defaultDarkness
+                                }
+                        ) {
+                            Box(
+                                modifier = Modifier
+                                    .fillMaxSize()
+                                    .background(Brush.verticalGradient(preset.gradientColors)),
+                                contentAlignment = Alignment.Center
+                            ) {
+                                Text(preset.emoji, fontSize = 16.sp)
+                            }
+                        }
+                    }
+                }
+
+                Spacer(modifier = Modifier.height(14.dp))
+
+                // Brightness / Darkness Slider
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceBetween
+                ) {
+                    Text(
+                        text = "Background Dimming (చీకటి స్థాయి):",
+                        fontSize = 12.sp,
+                        color = MaterialTheme.colorScheme.onSurface
+                    )
+                    Text(
+                        text = "${(editingDarkness * 100).toInt()}%",
+                        fontSize = 12.sp,
+                        fontWeight = FontWeight.Bold,
+                        color = BrandPrimary
+                    )
+                }
+                Slider(
+                    value = editingDarkness,
+                    onValueChange = { editingDarkness = it },
+                    valueRange = 0.10f..0.85f,
+                    colors = SliderDefaults.colors(
+                        thumbColor = BrandPrimary,
+                        activeTrackColor = BrandPrimary
+                    )
+                )
+
+                // Keycap Transparency Slider
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceBetween
+                ) {
+                    Text(
+                        text = "Keycap Opacity (కీల అపారదర్శకత):",
+                        fontSize = 12.sp,
+                        color = MaterialTheme.colorScheme.onSurface
+                    )
+                    Text(
+                        text = "${(editingKeyOpacity * 100).toInt()}%",
+                        fontSize = 12.sp,
+                        fontWeight = FontWeight.Bold,
+                        color = BrandPrimary
+                    )
+                }
+                Slider(
+                    value = editingKeyOpacity,
+                    onValueChange = { editingKeyOpacity = it },
+                    valueRange = 0.40f..1.00f,
+                    colors = SliderDefaults.colors(
+                        thumbColor = BrandPrimary,
+                        activeTrackColor = BrandPrimary
+                    )
+                )
+
+                Spacer(modifier = Modifier.height(12.dp))
+
+                // Apply Theme Button
+                Button(
+                    onClick = {
+                        onUpdatePreferences(
+                            preferences.copy(
+                                customPhotoUri = editingPhotoUri,
+                                customPhotoPreset = if (editingPhotoUri == null) (editingPresetId ?: "tirupati_gold") else null,
+                                customPhotoDarkness = editingDarkness,
+                                keyOpacity = editingKeyOpacity
+                            )
+                        )
+                        showCustomThemeSheet = false
+                        isKeyboardPoppedUp = true
+                        Toast.makeText(context, "Custom Photo Theme Applied Successfully!", Toast.LENGTH_SHORT).show()
+                    },
+                    colors = ButtonDefaults.buttonColors(containerColor = BrandPrimary),
+                    shape = RoundedCornerShape(10.dp),
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .height(46.dp)
+                        .testTag("apply_custom_theme_btn")
+                ) {
+                    Text(
+                        text = "Apply My Theme (థీమ్ వర్తింపజేయండి)",
+                        fontSize = 14.sp,
+                        fontWeight = FontWeight.Bold,
+                        color = Color.White
+                    )
                 }
             }
         }
-        Spacer(modifier = Modifier.height(4.dp))
-        Text(
-            text = title,
-            fontSize = 11.sp,
-            fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Normal,
-            color = MaterialTheme.colorScheme.onSurfaceVariant
-        )
     }
 }

@@ -27,4 +27,12 @@ class TeluguSmartApplication : Application() {
             clipboardDao = database.clipboardDao()
         )
     }
+
+    override fun onTrimMemory(level: Int) {
+        super.onTrimMemory(level)
+    }
+
+    override fun onLowMemory() {
+        super.onLowMemory()
+    }
 }

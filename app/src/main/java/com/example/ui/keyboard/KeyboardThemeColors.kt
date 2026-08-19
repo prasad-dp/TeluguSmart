@@ -19,8 +19,8 @@ data class KeyboardPalette(
 )
 
 object KeyboardThemeColors {
-    fun getPalette(type: KeyboardThemeType): KeyboardPalette {
-        return when (type) {
+    fun getPalette(type: KeyboardThemeType, customAccentHex: Long? = null): KeyboardPalette {
+        val base = when (type) {
             KeyboardThemeType.PITCH_BLACK -> KeyboardPalette(
                 background = Color(0xFF000000),
                 surface = Color(0xFF111113),
@@ -175,6 +175,16 @@ object KeyboardThemeColors {
                 suggestionText = Color(0xFFE0F2FE),
                 border = Color(0x3338BDF8)
             )
+        }
+        return if (customAccentHex != null) {
+            val customCol = Color(customAccentHex)
+            base.copy(
+                accent = customCol,
+                specialKeyText = customCol,
+                border = customCol.copy(alpha = 0.35f)
+            )
+        } else {
+            base
         }
     }
 }

@@ -2,6 +2,7 @@ package com.example.ui.components
 
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.size
@@ -20,7 +21,7 @@ import com.example.R
 
 /**
  * Official TeluguSmart Logo Component
- * Renders the exact custom designed 3D glassmorphic Telugu keyboard emblem from res/drawable/app_logo.xml
+ * Renders the official downloaded 1024x1024 3D logo asset from res/drawable/app_logo.png
  */
 @Composable
 fun TeluguSmartLogo(
@@ -29,17 +30,20 @@ fun TeluguSmartLogo(
     showText: Boolean = true,
     backgroundColor: Color = Color.Transparent
 ) {
+    val cornerRadius = size * 0.22f
+
     Box(
         modifier = modifier
             .size(size)
-            .clip(RoundedCornerShape(size * 0.18f))
+            .shadow(10.dp, RoundedCornerShape(cornerRadius), clip = false)
+            .clip(RoundedCornerShape(cornerRadius))
             .background(backgroundColor),
         contentAlignment = Alignment.Center
     ) {
         Image(
             painter = painterResource(id = R.drawable.app_logo),
             contentDescription = "TeluguSmart Official Keyboard Logo",
-            contentScale = ContentScale.Fit,
+            contentScale = ContentScale.Crop,
             modifier = Modifier.fillMaxSize()
         )
     }

@@ -296,6 +296,7 @@ fun SuggestionStrip(
                             KeyboardLayoutMode.TENGLISH -> "తెలుగు"
                             KeyboardLayoutMode.NATIVE_TELUGU -> "అక్షరాలు"
                             KeyboardLayoutMode.ENGLISH -> "English"
+                            KeyboardLayoutMode.HANDWRITING -> "వ్రాత"
                             KeyboardLayoutMode.SYMBOLS, KeyboardLayoutMode.MORE_SYMBOLS -> "?123"
                         },
                         fontSize = 11.sp,

@@ -29,6 +29,7 @@ fun SymbolsKeyGrid(
     onBackspace: () -> Unit,
     onBackspaceSwipeDelete: () -> Unit,
     onSpacePress: () -> Unit,
+    onSpaceLongPress: (() -> Unit)? = null,
     onSpaceCursorDrag: (Float) -> Unit,
     onEnterPress: () -> Unit,
     onSwitchToLetters: () -> Unit
@@ -182,7 +183,8 @@ fun SymbolsKeyGrid(
                     primaryText = "స్పేస్ (Space)",
                     palette = palette,
                     preferences = preferences,
-                    onClick = onSpacePress
+                    onClick = onSpacePress,
+                    onLongClick = onSpaceLongPress
                 )
             }
 

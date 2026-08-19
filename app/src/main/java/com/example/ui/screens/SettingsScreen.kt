@@ -21,6 +21,7 @@ import androidx.compose.material.icons.filled.ChevronRight
 import androidx.compose.material.icons.filled.DeleteOutline
 import androidx.compose.material.icons.filled.EmojiEmotions
 import androidx.compose.material.icons.filled.Gesture
+import androidx.compose.material.icons.filled.GridOn
 import androidx.compose.material.icons.filled.Height
 import androidx.compose.material.icons.filled.HelpOutline
 import androidx.compose.material.icons.filled.Keyboard
@@ -54,7 +55,14 @@ import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.example.data.HapticStrength
 import com.example.data.KeyboardPreferences
+import com.example.data.KeyboardSoundProfile
+import com.example.data.OneHandedMode
+import com.example.engine.SoundFeedbackHelper
+import androidx.compose.material.icons.filled.PhoneAndroid
+import androidx.compose.material3.FilterChip
+import androidx.compose.material3.FilterChipDefaults
 
 data class SettingItem(
     val id: String,
@@ -78,18 +86,27 @@ fun SettingsScreen(
     // Dialog States
     var currentHeightPercent by remember { mutableIntStateOf(preferences.keyboardHeightPercent) }
     var soundEnabled by remember { mutableStateOf(preferences.keySoundFeedback) }
+    var soundProfile by remember { mutableStateOf(preferences.soundProfile) }
     var hapticEnabled by remember { mutableStateOf(preferences.keyHapticFeedback) }
+    var hapticStrength by remember { mutableStateOf(preferences.hapticStrength) }
     var numberRowEnabled by remember { mutableStateOf(preferences.showNumberRow) }
     var autoTranslitEnabled by remember { mutableStateOf(preferences.autoTransliterateOnSpace) }
     var autoCapEnabled by remember { mutableStateOf(preferences.autoCapitalization) }
+    var nextWordPredictionEnabled by remember { mutableStateOf(preferences.nextWordPredictionEnabled) }
+    var glideTypingEnabled by remember { mutableStateOf(preferences.glideTypingEnabled) }
+    var oneHandedMode by remember { mutableStateOf(preferences.oneHandedMode) }
+    var keyBorderEnabled by remember { mutableStateOf(preferences.keyBorderEnabled) }
 
     val settingItems = listOf(
         SettingItem("themes", "Themes", Icons.Default.Palette, Color(0xFF0D9488)),
-        SettingItem("height", "Keyboard height", Icons.Default.Height, Color(0xFF059669)),
-        SettingItem("sound", "Sound & vibration", Icons.Default.VolumeUp, Color(0xFF0D9488)),
+        SettingItem("key_borders", "Show key borders", Icons.Default.GridOn, Color(0xFF047857)),
+        SettingItem("effects", "Key tap effects & animations", Icons.Default.AutoAwesome, Color(0xFF059669)),
+        SettingItem("height", "Keyboard height", Icons.Default.Height, Color(0xFF0D9488)),
+        SettingItem("one_handed", "One-handed mode & layout", Icons.Default.PhoneAndroid, Color(0xFF059669)),
+        SettingItem("sound", "Sound & vibration feedback", Icons.Default.VolumeUp, Color(0xFF0D9488)),
         SettingItem("emojis", "Emojis, numbers & symbols", Icons.Default.EmojiEmotions, Color(0xFF059669)),
-        SettingItem("typing", "Typing", Icons.Default.Keyboard, Color(0xFF0D9488)),
-        SettingItem("gestures", "Handwriting & gestures", Icons.Default.Gesture, Color(0xFF059669)),
+        SettingItem("typing", "Typing & Next-word prediction", Icons.Default.Keyboard, Color(0xFF0D9488)),
+        SettingItem("gestures", "Handwriting & Glide typing", Icons.Default.Gesture, Color(0xFF059669)),
         SettingItem("extras", "Extra features", Icons.Default.AutoAwesome, Color(0xFF0D9488)),
         SettingItem("accessibility", "Accessibility", Icons.Default.Accessibility, Color(0xFF059669)),
         SettingItem("premium", "Premium", Icons.Default.Star, Color(0xFF0D9488)),
@@ -101,7 +118,7 @@ fun SettingsScreen(
         modifier = Modifier
             .fillMaxSize()
             .verticalScroll(scrollState)
-            .padding(start = 16.dp, end = 16.dp, top = 12.dp, bottom = 80.dp)
+            .padding(start = 16.dp, end = 16.dp, top = 12.dp, bottom = 120.dp)
             .testTag("settings_screen_container")
     ) {
         Card(
@@ -123,7 +140,17 @@ fun SettingsScreen(
                             .fillMaxWidth()
                             .clickable {
                                 when (item.id) {
-                                    "themes" -> onNavigateToThemes()
+                                    "themes", "effects" -> onNavigateToThemes()
+                                    "key_borders" -> {
+                                        val newSetting = !keyBorderEnabled
+                                        keyBorderEnabled = newSetting
+                                        onUpdatePreferences(preferences.copy(keyBorderEnabled = newSetting))
+                                        Toast.makeText(
+                                            context,
+                                            if (newSetting) "Key borders enabled" else "Key borders disabled",
+                                            Toast.LENGTH_SHORT
+                                        ).show()
+                                    }
                                     else -> activeDialog = item.id
                                 }
                             }
@@ -150,12 +177,32 @@ fun SettingsScreen(
                             )
                         }
 
-                        Icon(
-                            imageVector = Icons.Default.ChevronRight,
-                            contentDescription = "Open",
-                            tint = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.5f),
-                            modifier = Modifier.size(20.dp)
-                        )
+                        if (item.id == "key_borders") {
+                            Switch(
+                                checked = keyBorderEnabled,
+                                onCheckedChange = { checked ->
+                                    keyBorderEnabled = checked
+                                    onUpdatePreferences(preferences.copy(keyBorderEnabled = checked))
+                                    Toast.makeText(
+                                        context,
+                                        if (checked) "Key borders enabled" else "Key borders disabled",
+                                        Toast.LENGTH_SHORT
+                                    ).show()
+                                },
+                                colors = SwitchDefaults.colors(
+                                    checkedTrackColor = Color(0xFF047857),
+                                    checkedThumbColor = Color.White
+                                ),
+                                modifier = Modifier.testTag("switch_setting_key_borders")
+                            )
+                        } else {
+                            Icon(
+                                imageVector = Icons.Default.ChevronRight,
+                                contentDescription = "Open",
+                                tint = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.5f),
+                                modifier = Modifier.size(20.dp)
+                            )
+                        }
                     }
 
                     if (index < settingItems.size - 1) {
@@ -211,35 +258,161 @@ fun SettingsScreen(
                 }
             )
         }
+        "one_handed" -> {
+            AlertDialog(
+                onDismissRequest = { activeDialog = null },
+                title = { Text("One-Handed Mode & Layout", fontWeight = FontWeight.Bold) },
+                text = {
+                    Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
+                        Text("Choose default keyboard docking alignment for easy one-hand typing:", fontSize = 13.sp)
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.spacedBy(8.dp)
+                        ) {
+                            OneHandedMode.entries.forEach { mode ->
+                                FilterChip(
+                                    selected = (oneHandedMode == mode),
+                                    onClick = { oneHandedMode = mode },
+                                    label = {
+                                        Text(
+                                            when (mode) {
+                                                OneHandedMode.OFF -> "Full Width"
+                                                OneHandedMode.LEFT -> "Left Hand"
+                                                OneHandedMode.RIGHT -> "Right Hand"
+                                            },
+                                            fontSize = 12.sp
+                                        )
+                                    },
+                                    colors = FilterChipDefaults.filterChipColors(
+                                        selectedContainerColor = Color(0xFF047857),
+                                        selectedLabelColor = Color.White
+                                    )
+                                )
+                            }
+                        }
+                    }
+                },
+                confirmButton = {
+                    TextButton(onClick = {
+                        onUpdatePreferences(preferences.copy(oneHandedMode = oneHandedMode))
+                        activeDialog = null
+                        Toast.makeText(context, "Layout preference saved", Toast.LENGTH_SHORT).show()
+                    }) {
+                        Text("Save", color = Color(0xFF047857), fontWeight = FontWeight.Bold)
+                    }
+                },
+                dismissButton = {
+                    TextButton(onClick = { activeDialog = null }) {
+                        Text("Cancel")
+                    }
+                }
+            )
+        }
         "sound" -> {
             AlertDialog(
                 onDismissRequest = { activeDialog = null },
-                title = { Text("Sound & Vibration", fontWeight = FontWeight.Bold) },
+                title = { Text("Sound & Vibration Feedback", fontWeight = FontWeight.Bold) },
                 text = {
-                    Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
+                    Column(
+                        modifier = Modifier.verticalScroll(rememberScrollState()),
+                        verticalArrangement = Arrangement.spacedBy(14.dp)
+                    ) {
                         Row(
                             modifier = Modifier.fillMaxWidth(),
                             horizontalArrangement = Arrangement.SpaceBetween,
                             verticalAlignment = Alignment.CenterVertically
                         ) {
-                            Text("Keypress Sound")
+                            Text("Keypress Audio Sound", fontWeight = FontWeight.SemiBold)
                             Switch(
                                 checked = soundEnabled,
-                                onCheckedChange = { soundEnabled = it },
+                                onCheckedChange = {
+                                    soundEnabled = it
+                                    if (it) SoundFeedbackHelper.playKeySound(soundProfile)
+                                },
                                 colors = SwitchDefaults.colors(checkedTrackColor = Color(0xFF047857))
                             )
                         }
+
+                        if (soundEnabled) {
+                            Text("Sound Tone Profile (Tap to preview):", fontSize = 12.sp, color = Color.Gray)
+                            Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
+                                KeyboardSoundProfile.entries.forEach { profile ->
+                                    FilterChip(
+                                        selected = (soundProfile == profile),
+                                        onClick = {
+                                            soundProfile = profile
+                                            SoundFeedbackHelper.playKeySound(profile)
+                                        },
+                                        label = {
+                                            Text(
+                                                when (profile) {
+                                                    KeyboardSoundProfile.DEFAULT_CLICK -> "🔊 Standard System Click"
+                                                    KeyboardSoundProfile.MECHANICAL_THOCK -> "⌨️ Mechanical Switch"
+                                                    KeyboardSoundProfile.TYPEWRITER -> "📜 Classic Typewriter"
+                                                    KeyboardSoundProfile.WATER_DROP -> "💧 Water Bubble Pop"
+                                                    KeyboardSoundProfile.DIGITAL_BEEP -> "⚡ Cyber Blip"
+                                                },
+                                                fontSize = 12.sp
+                                            )
+                                        },
+                                        colors = FilterChipDefaults.filterChipColors(
+                                            selectedContainerColor = Color(0xFF047857),
+                                            selectedLabelColor = Color.White
+                                        ),
+                                        modifier = Modifier.fillMaxWidth()
+                                    )
+                                }
+                            }
+                        }
+
+                        HorizontalDivider()
+
                         Row(
                             modifier = Modifier.fillMaxWidth(),
                             horizontalArrangement = Arrangement.SpaceBetween,
                             verticalAlignment = Alignment.CenterVertically
                         ) {
-                            Text("Haptic Feedback Vibration")
+                            Text("Haptic Feedback Vibration", fontWeight = FontWeight.SemiBold)
                             Switch(
                                 checked = hapticEnabled,
-                                onCheckedChange = { hapticEnabled = it },
+                                onCheckedChange = {
+                                    hapticEnabled = it
+                                    if (it) SoundFeedbackHelper.triggerHaptic(hapticStrength)
+                                },
                                 colors = SwitchDefaults.colors(checkedTrackColor = Color(0xFF047857))
                             )
+                        }
+
+                        if (hapticEnabled) {
+                            Text("Haptic Vibration Intensity:", fontSize = 12.sp, color = Color.Gray)
+                            Row(
+                                modifier = Modifier.fillMaxWidth(),
+                                horizontalArrangement = Arrangement.spacedBy(8.dp)
+                            ) {
+                                HapticStrength.entries.forEach { strength ->
+                                    FilterChip(
+                                        selected = (hapticStrength == strength),
+                                        onClick = {
+                                            hapticStrength = strength
+                                            SoundFeedbackHelper.triggerHaptic(strength)
+                                        },
+                                        label = {
+                                            Text(
+                                                when (strength) {
+                                                    HapticStrength.LIGHT -> "Light"
+                                                    HapticStrength.MEDIUM -> "Medium"
+                                                    HapticStrength.STRONG -> "Strong"
+                                                },
+                                                fontSize = 12.sp
+                                            )
+                                        },
+                                        colors = FilterChipDefaults.filterChipColors(
+                                            selectedContainerColor = Color(0xFF047857),
+                                            selectedLabelColor = Color.White
+                                        )
+                                    )
+                                }
+                            }
                         }
                     }
                 },
@@ -247,11 +420,19 @@ fun SettingsScreen(
                     TextButton(onClick = {
                         onUpdatePreferences(preferences.copy(
                             keySoundFeedback = soundEnabled,
-                            keyHapticFeedback = hapticEnabled
+                            soundProfile = soundProfile,
+                            keyHapticFeedback = hapticEnabled,
+                            hapticStrength = hapticStrength
                         ))
                         activeDialog = null
+                        Toast.makeText(context, "Sound & vibration preferences saved", Toast.LENGTH_SHORT).show()
                     }) {
                         Text("Save", color = Color(0xFF047857), fontWeight = FontWeight.Bold)
+                    }
+                },
+                dismissButton = {
+                    TextButton(onClick = { activeDialog = null }) {
+                        Text("Cancel")
                     }
                 }
             )
@@ -266,7 +447,7 @@ fun SettingsScreen(
                         horizontalArrangement = Arrangement.SpaceBetween,
                         verticalAlignment = Alignment.CenterVertically
                     ) {
-                        Text("Dedicated Number Row")
+                        Text("Dedicated Top Number Row")
                         Switch(
                             checked = numberRowEnabled,
                             onCheckedChange = { numberRowEnabled = it },
@@ -290,6 +471,18 @@ fun SettingsScreen(
                 title = { Text("Typing Preferences", fontWeight = FontWeight.Bold) },
                 text = {
                     Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.SpaceBetween,
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Text("Next-Word Smart Prediction")
+                            Switch(
+                                checked = nextWordPredictionEnabled,
+                                onCheckedChange = { nextWordPredictionEnabled = it },
+                                colors = SwitchDefaults.colors(checkedTrackColor = Color(0xFF047857))
+                            )
+                        }
                         Row(
                             modifier = Modifier.fillMaxWidth(),
                             horizontalArrangement = Arrangement.SpaceBetween,
@@ -319,6 +512,7 @@ fun SettingsScreen(
                 confirmButton = {
                     TextButton(onClick = {
                         onUpdatePreferences(preferences.copy(
+                            nextWordPredictionEnabled = nextWordPredictionEnabled,
                             autoTransliterateOnSpace = autoTranslitEnabled,
                             autoCapitalization = autoCapEnabled
                         ))
@@ -332,12 +526,33 @@ fun SettingsScreen(
         "gestures" -> {
             AlertDialog(
                 onDismissRequest = { activeDialog = null },
-                title = { Text("Handwriting & Gestures", fontWeight = FontWeight.Bold) },
+                title = { Text("Handwriting & Glide Typing", fontWeight = FontWeight.Bold) },
                 text = {
-                    Text("Telugu smart gesture glide typing trail and finger handwriting canvas are enabled.")
+                    Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.SpaceBetween,
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Text("Continuous Glide / Swipe Typing")
+                            Switch(
+                                checked = glideTypingEnabled,
+                                onCheckedChange = { glideTypingEnabled = it },
+                                colors = SwitchDefaults.colors(checkedTrackColor = Color(0xFF047857))
+                            )
+                        }
+                        Text(
+                            "Gesture trail and finger handwriting canvas allow seamless single-finger composition in Telugu.",
+                            fontSize = 12.sp,
+                            color = Color.Gray
+                        )
+                    }
                 },
                 confirmButton = {
-                    TextButton(onClick = { activeDialog = null }) {
+                    TextButton(onClick = {
+                        onUpdatePreferences(preferences.copy(glideTypingEnabled = glideTypingEnabled))
+                        activeDialog = null
+                    }) {
                         Text("Done", color = Color(0xFF047857))
                     }
                 }

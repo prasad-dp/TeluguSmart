@@ -25,16 +25,22 @@ fun TenglishKeyGrid(
     palette: KeyboardPalette,
     preferences: KeyboardPreferences,
     isShifted: Boolean,
+    isEnglish: Boolean = false,
     onKeyPress: (String) -> Unit,
     onShiftToggle: () -> Unit,
     onBackspace: () -> Unit,
     onBackspaceSwipeDelete: () -> Unit,
     onSpacePress: () -> Unit,
+    onSpaceLongPress: (() -> Unit)? = null,
     onSpaceCursorDrag: (Float) -> Unit,
     onEnterPress: () -> Unit,
     onSwitchToSymbols: () -> Unit,
     onSwitchLayout: () -> Unit
 ) {
+    val numberRow = listOf(
+        "1" to "౧", "2" to "౨", "3" to "౩", "4" to "౪", "5" to "౫",
+        "6" to "౬", "7" to "౭", "8" to "౮", "9" to "౯", "0" to "౦"
+    )
     val row1 = listOf(
         "q" to "1", "w" to "2", "e" to "3", "r" to "4", "t" to "5",
         "y" to "6", "u" to "7", "i" to "8", "o" to "9", "p" to "0"
@@ -54,6 +60,26 @@ fun TenglishKeyGrid(
             .padding(horizontal = 4.dp, vertical = 2.dp),
         verticalArrangement = Arrangement.spacedBy(4.dp)
     ) {
+        // Optional Dedicated Number Row
+        if (preferences.showNumberRow) {
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceEvenly
+            ) {
+                numberRow.forEach { (num, teluguNum) ->
+                    KeyComponent(
+                        modifier = Modifier.weight(1f),
+                        primaryText = num,
+                        secondaryText = teluguNum,
+                        palette = palette,
+                        preferences = preferences,
+                        onClick = { onKeyPress(num) },
+                        onLongClick = { onKeyPress(teluguNum) }
+                    )
+                }
+            }
+        }
+
         // Row 1
         Row(
             modifier = Modifier.fillMaxWidth(),
@@ -206,10 +232,11 @@ fun TenglishKeyGrid(
             ) {
                 KeyComponent(
                     modifier = Modifier.fillMaxWidth(),
-                    primaryText = "Telugu (తెలుగు)",
+                    primaryText = if (isEnglish) "English" else "Telugu (తెలుగు)",
                     palette = palette,
                     preferences = preferences,
-                    onClick = onSpacePress
+                    onClick = onSpacePress,
+                    onLongClick = onSpaceLongPress
                 )
             }
 

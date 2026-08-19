@@ -7,6 +7,8 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.layout.ContentScale
+import coil.compose.AsyncImage
 
 data class WallpaperPreset(
     val id: String,
@@ -17,7 +19,135 @@ data class WallpaperPreset(
     val defaultDarkness: Float = 0.45f
 )
 
+data class KeyboardBackgroundImage(
+    val id: String,
+    val title: String,
+    val category: String,
+    val imageUrl: String,
+    val defaultDarkness: Float = 0.45f
+)
+
 object CustomWallpaperPresets {
+    // 15 Curated High Quality Background Images (Hillsations, Hills, Cars, Bikes, Buildings, Beaches)
+    val BACKGROUND_IMAGES = listOf(
+        // Category 1: Hill Stations
+        KeyboardBackgroundImage(
+            id = "bg_hillstation_munnar",
+            title = "Munnar Tea Hills",
+            category = "Hill Stations",
+            imageUrl = "https://images.unsplash.com/photo-1544735716-392fe2489ffa?auto=format&fit=crop&w=800&q=80",
+            defaultDarkness = 0.40f
+        ),
+        KeyboardBackgroundImage(
+            id = "bg_hillstation_misty",
+            title = "Misty Valley Lake",
+            category = "Hill Stations",
+            imageUrl = "https://images.unsplash.com/photo-1506744038136-46273834b3fb?auto=format&fit=crop&w=800&q=80",
+            defaultDarkness = 0.42f
+        ),
+        KeyboardBackgroundImage(
+            id = "bg_hillstation_fog",
+            title = "Pine Forest Mist",
+            category = "Hill Stations",
+            imageUrl = "https://images.unsplash.com/photo-1448375240586-882707db888b?auto=format&fit=crop&w=800&q=80",
+            defaultDarkness = 0.45f
+        ),
+
+        // Category 2: Hills & Mountains
+        KeyboardBackgroundImage(
+            id = "bg_hills_green",
+            title = "Lush Green Peaks",
+            category = "Hills",
+            imageUrl = "https://images.unsplash.com/photo-1464822759023-fed622ff2c3b?auto=format&fit=crop&w=800&q=80",
+            defaultDarkness = 0.40f
+        ),
+        KeyboardBackgroundImage(
+            id = "bg_hills_snow",
+            title = "Starry Alpine Summit",
+            category = "Hills",
+            imageUrl = "https://images.unsplash.com/photo-1519681393784-d120267933ba?auto=format&fit=crop&w=800&q=80",
+            defaultDarkness = 0.45f
+        ),
+        KeyboardBackgroundImage(
+            id = "bg_hills_sunset",
+            title = "Sunset Mountain Glow",
+            category = "Hills",
+            imageUrl = "https://images.unsplash.com/photo-1506905925346-21bda4d32df4?auto=format&fit=crop&w=800&q=80",
+            defaultDarkness = 0.40f
+        ),
+
+        // Category 3: Cars
+        KeyboardBackgroundImage(
+            id = "bg_cars_porsche",
+            title = "Dark Sports Car",
+            category = "Cars",
+            imageUrl = "https://images.unsplash.com/photo-1503376780353-7e6692767b70?auto=format&fit=crop&w=800&q=80",
+            defaultDarkness = 0.42f
+        ),
+        KeyboardBackgroundImage(
+            id = "bg_cars_neon",
+            title = "Neon Night Supercar",
+            category = "Cars",
+            imageUrl = "https://images.unsplash.com/photo-1617788138017-80ad40651399?auto=format&fit=crop&w=800&q=80",
+            defaultDarkness = 0.40f
+        ),
+
+        // Category 4: Bikes
+        KeyboardBackgroundImage(
+            id = "bg_bikes_cruiser",
+            title = "Modern Superbike",
+            category = "Bikes",
+            imageUrl = "https://images.unsplash.com/photo-1558981403-c5f9899a28bc?auto=format&fit=crop&w=800&q=80",
+            defaultDarkness = 0.45f
+        ),
+        KeyboardBackgroundImage(
+            id = "bg_bikes_racing",
+            title = "Track Racing Bike",
+            category = "Bikes",
+            imageUrl = "https://images.unsplash.com/photo-1568772585407-9361f9bf3a87?auto=format&fit=crop&w=800&q=80",
+            defaultDarkness = 0.42f
+        ),
+
+        // Category 5: Buildings & Architecture
+        KeyboardBackgroundImage(
+            id = "bg_buildings_skyline",
+            title = "Metropolis Skyline",
+            category = "Buildings",
+            imageUrl = "https://images.unsplash.com/photo-1477959858617-67f30bc75b82?auto=format&fit=crop&w=800&q=80",
+            defaultDarkness = 0.45f
+        ),
+        KeyboardBackgroundImage(
+            id = "bg_buildings_neon",
+            title = "Cyber City Lights",
+            category = "Buildings",
+            imageUrl = "https://images.unsplash.com/photo-1514565131-fce0801e5785?auto=format&fit=crop&w=800&q=80",
+            defaultDarkness = 0.42f
+        ),
+        KeyboardBackgroundImage(
+            id = "bg_buildings_glass",
+            title = "Modern High-Rise",
+            category = "Buildings",
+            imageUrl = "https://images.unsplash.com/photo-1486406146926-c627a92ad1ab?auto=format&fit=crop&w=800&q=80",
+            defaultDarkness = 0.45f
+        ),
+
+        // Category 6: Beaches
+        KeyboardBackgroundImage(
+            id = "bg_beaches_turquoise",
+            title = "Turquoise Ocean Wave",
+            category = "Beaches",
+            imageUrl = "https://images.unsplash.com/photo-1507525428034-b723cf961d3e?auto=format&fit=crop&w=800&q=80",
+            defaultDarkness = 0.40f
+        ),
+        KeyboardBackgroundImage(
+            id = "bg_beaches_sunset",
+            title = "Sunset Coast & Palms",
+            category = "Beaches",
+            imageUrl = "https://images.unsplash.com/photo-1510414842594-a61c69b5ae57?auto=format&fit=crop&w=800&q=80",
+            defaultDarkness = 0.40f
+        )
+    )
+
     val PRESETS = listOf(
         WallpaperPreset(
             id = "tirupati_gold",
@@ -74,13 +204,30 @@ object CustomWallpaperPresets {
 fun KeyboardBackgroundSurface(
     modifier: Modifier = Modifier,
     presetId: String?,
+    customPhotoUri: String? = null,
     customDarkness: Float,
     basePalette: KeyboardPalette,
     content: @Composable () -> Unit
 ) {
     val preset = CustomWallpaperPresets.PRESETS.find { it.id == presetId }
 
-    if (preset != null) {
+    if (customPhotoUri != null) {
+        Box(modifier = modifier) {
+            AsyncImage(
+                model = customPhotoUri,
+                contentDescription = "Custom Keyboard Wallpaper",
+                modifier = Modifier.matchParentSize(),
+                contentScale = ContentScale.Crop
+            )
+            // Darkness / contrast overlay for readability
+            Box(
+                modifier = Modifier
+                    .matchParentSize()
+                    .background(Color.Black.copy(alpha = customDarkness.coerceIn(0.1f, 0.85f)))
+            )
+            content()
+        }
+    } else if (preset != null) {
         Box(
             modifier = modifier
                 .background(Brush.verticalGradient(preset.gradientColors))
