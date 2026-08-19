@@ -1,0 +1,6 @@
+{
+  "name": "TeluguSmart Keyboard",
+  "description": "Smart, lightweight Telugu & Tenglish keyboard with phonetic transliteration, dynamic guninthalu palette, gestures, and zero-keystroke tracking.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}

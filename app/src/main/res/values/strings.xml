@@ -1,0 +1,8 @@
+<resources>
+    <string name="app_name">TeluguSmart Keyboard</string>
+    <string name="ime_service_name">TeluguSmart Keyboard (తెలుగు)</string>
+    <string name="subtype_tenglish">Telugu (Tenglish Phonetic)</string>
+    <string name="subtype_inscript">Telugu (Native InScript)</string>
+    <string name="subtype_english">English (US)</string>
+</resources>
+

@@ -1,0 +1,197 @@
+<?xml version="1.0" encoding="utf-8"?>
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="512dp"
+    android:height="512dp"
+    android:viewportWidth="512"
+    android:viewportHeight="512">
+
+    <!-- Background: Deep Dark Slate Navy Canvas -->
+    <path
+        android:pathData="M64,0 h384 a64,64 0 0 1 64,64 v384 a64,64 0 0 1 -64,64 h-384 a64,64 0 0 1 -64,-64 v-384 a64,64 0 0 1 64,-64 z"
+        android:fillColor="#0D1322" />
+
+    <!-- Keyboard Keys Grid (3D Frosted Glass Keys in Muted Teal-Cyan) -->
+
+    <!-- ROW 1 (Top Row: 4 Keys) -->
+    <!-- Key 1 (Top Left) -->
+    <path
+        android:pathData="M106,88 h46 a12,12 0 0 1 12,12 v36 a12,12 0 0 1 -12,12 h-46 a12,12 0 0 1 -12,-12 v-36 a12,12 0 0 1 12,-12 z"
+        android:fillColor="#243E47" />
+    <path
+        android:pathData="M106,88 h46 a12,12 0 0 1 12,12 v36 a12,12 0 0 1 -12,12 h-46 a12,12 0 0 1 -12,-12 v-36 a12,12 0 0 1 12,-12 z"
+        android:strokeColor="#4A7580"
+        android:strokeWidth="3"
+        android:fillColor="#00000000" />
+
+    <!-- Key 2 (Top Mid-Left) -->
+    <path
+        android:pathData="M178,88 h46 a12,12 0 0 1 12,12 v36 a12,12 0 0 1 -12,12 h-46 a12,12 0 0 1 -12,-12 v-36 a12,12 0 0 1 12,-12 z"
+        android:fillColor="#243E47" />
+    <path
+        android:pathData="M178,88 h46 a12,12 0 0 1 12,12 v36 a12,12 0 0 1 -12,12 h-46 a12,12 0 0 1 -12,-12 v-36 a12,12 0 0 1 12,-12 z"
+        android:strokeColor="#4A7580"
+        android:strokeWidth="3"
+        android:fillColor="#00000000" />
+
+    <!-- Key 3 (Top Mid-Right) -->
+    <path
+        android:pathData="M292,88 h46 a12,12 0 0 1 12,12 v36 a12,12 0 0 1 -12,12 h-46 a12,12 0 0 1 -12,-12 v-36 a12,12 0 0 1 12,-12 z"
+        android:fillColor="#243E47" />
+    <path
+        android:pathData="M292,88 h46 a12,12 0 0 1 12,12 v36 a12,12 0 0 1 -12,12 h-46 a12,12 0 0 1 -12,-12 v-36 a12,12 0 0 1 12,-12 z"
+        android:strokeColor="#4A7580"
+        android:strokeWidth="3"
+        android:fillColor="#00000000" />
+
+    <!-- Key 4 (Top Right) -->
+    <path
+        android:pathData="M360,88 h46 a12,12 0 0 1 12,12 v36 a12,12 0 0 1 -12,12 h-46 a12,12 0 0 1 -12,-12 v-36 a12,12 0 0 1 12,-12 z"
+        android:fillColor="#243E47" />
+    <path
+        android:pathData="M360,88 h46 a12,12 0 0 1 12,12 v36 a12,12 0 0 1 -12,12 h-46 a12,12 0 0 1 -12,-12 v-36 a12,12 0 0 1 12,-12 z"
+        android:strokeColor="#4A7580"
+        android:strokeWidth="3"
+        android:fillColor="#00000000" />
+
+    <!-- ROW 2 (Flanking Shield) -->
+    <!-- Left Flank 1 -->
+    <path
+        android:pathData="M106,156 h46 a12,12 0 0 1 12,12 v36 a12,12 0 0 1 -12,12 h-46 a12,12 0 0 1 -12,-12 v-36 a12,12 0 0 1 12,-12 z"
+        android:fillColor="#243E47" />
+    <path
+        android:pathData="M106,156 h46 a12,12 0 0 1 12,12 v36 a12,12 0 0 1 -12,12 h-46 a12,12 0 0 1 -12,-12 v-36 a12,12 0 0 1 12,-12 z"
+        android:strokeColor="#4A7580"
+        android:strokeWidth="3"
+        android:fillColor="#00000000" />
+
+    <!-- Right Flank 1 -->
+    <path
+        android:pathData="M360,156 h46 a12,12 0 0 1 12,12 v36 a12,12 0 0 1 -12,12 h-46 a12,12 0 0 1 -12,-12 v-36 a12,12 0 0 1 12,-12 z"
+        android:fillColor="#243E47" />
+    <path
+        android:pathData="M360,156 h46 a12,12 0 0 1 12,12 v36 a12,12 0 0 1 -12,12 h-46 a12,12 0 0 1 -12,-12 v-36 a12,12 0 0 1 12,-12 z"
+        android:strokeColor="#4A7580"
+        android:strokeWidth="3"
+        android:fillColor="#00000000" />
+
+    <!-- ROW 3 (Flanking Shield) -->
+    <!-- Left Flank 2 -->
+    <path
+        android:pathData="M106,224 h46 a12,12 0 0 1 12,12 v36 a12,12 0 0 1 -12,12 h-46 a12,12 0 0 1 -12,-12 v-36 a12,12 0 0 1 12,-12 z"
+        android:fillColor="#243E47" />
+    <path
+        android:pathData="M106,224 h46 a12,12 0 0 1 12,12 v36 a12,12 0 0 1 -12,12 h-46 a12,12 0 0 1 -12,-12 v-36 a12,12 0 0 1 12,-12 z"
+        android:strokeColor="#4A7580"
+        android:strokeWidth="3"
+        android:fillColor="#00000000" />
+
+    <!-- Right Flank 2 -->
+    <path
+        android:pathData="M360,224 h46 a12,12 0 0 1 12,12 v36 a12,12 0 0 1 -12,12 h-46 a12,12 0 0 1 -12,-12 v-36 a12,12 0 0 1 12,-12 z"
+        android:fillColor="#243E47" />
+    <path
+        android:pathData="M360,224 h46 a12,12 0 0 1 12,12 v36 a12,12 0 0 1 -12,12 h-46 a12,12 0 0 1 -12,-12 v-36 a12,12 0 0 1 12,-12 z"
+        android:strokeColor="#4A7580"
+        android:strokeWidth="3"
+        android:fillColor="#00000000" />
+
+    <!-- ROW 4 (Bottom Keyboard Keys: 2 Wide Keys) -->
+    <!-- Left Wide Key -->
+    <path
+        android:pathData="M106,292 h56 a12,12 0 0 1 12,12 v36 a12,12 0 0 1 -12,12 h-56 a12,12 0 0 1 -12,-12 v-36 a12,12 0 0 1 12,-12 z"
+        android:fillColor="#243E47" />
+    <path
+        android:pathData="M106,292 h56 a12,12 0 0 1 12,12 v36 a12,12 0 0 1 -12,12 h-56 a12,12 0 0 1 -12,-12 v-36 a12,12 0 0 1 12,-12 z"
+        android:strokeColor="#4A7580"
+        android:strokeWidth="3"
+        android:fillColor="#00000000" />
+
+    <!-- Right Wide Key -->
+    <path
+        android:pathData="M348,292 h56 a12,12 0 0 1 12,12 v36 a12,12 0 0 1 -12,12 h-56 a12,12 0 0 1 -12,-12 v-36 a12,12 0 0 1 12,-12 z"
+        android:fillColor="#243E47" />
+    <path
+        android:pathData="M348,292 h56 a12,12 0 0 1 12,12 v36 a12,12 0 0 1 -12,12 h-56 a12,12 0 0 1 -12,-12 v-36 a12,12 0 0 1 12,-12 z"
+        android:strokeColor="#4A7580"
+        android:strokeWidth="3"
+        android:fillColor="#00000000" />
+
+    <!-- CENTER SHIELD: Pure 3D Silver/White Security Emblem -->
+    <!-- 1. Shield Drop Shadow -->
+    <path
+        android:pathData="M256,104 C304,116 338,124 350,146 C350,224 308,266 256,290 C204,266 162,224 162,146 C174,124 208,116 256,104 Z"
+        android:fillColor="#070C16" />
+
+    <!-- 2. Shield Beveled Rim (Silver White Gradient Outline) -->
+    <path
+        android:pathData="M256,100 C304,112 338,120 350,142 C350,220 308,262 256,286 C204,262 162,220 162,142 C174,120 208,112 256,100 Z"
+        android:fillColor="#F1F5F9" />
+
+    <!-- 3. Shield Inner Face (Matte Silver Tone with Bevels) -->
+    <path
+        android:pathData="M256,112 C296,122 326,130 336,148 C336,214 300,250 256,272 C212,250 176,214 176,148 C186,130 216,122 256,112 Z"
+        android:fillColor="#D8E2EA" />
+
+    <!-- 4. Shield Subtle Right Crease (Shadow Half) -->
+    <path
+        android:pathData="M256,112 C296,122 326,130 336,148 C336,214 300,250 256,272 L256,112 Z"
+        android:fillColor="#C6D3DE" />
+
+    <!-- TELUGU LETTER 'తె' INSIDE THE SHIELD (Dark Obsidian Navy #0D1322) -->
+    <!-- Top Horizontal Roofline & Hook -->
+    <path
+        android:pathData="M222,154 L290,154 L290,172 L258,172 L290,196"
+        android:strokeColor="#0D1322"
+        android:strokeWidth="11"
+        android:strokeLineCap="round"
+        android:strokeLineJoin="round"
+        android:fillColor="#00000000" />
+
+    <!-- Left Eye Loop -->
+    <path
+        android:pathData="M234,196 a14,14 0 1 1 -0.01,0"
+        android:strokeColor="#0D1322"
+        android:strokeWidth="10"
+        android:fillColor="#00000000" />
+
+    <!-- Right Eye Loop -->
+    <path
+        android:pathData="M276,196 a14,14 0 1 1 -0.01,0"
+        android:strokeColor="#0D1322"
+        android:strokeWidth="10"
+        android:fillColor="#00000000" />
+
+    <!-- Bottom Connecting Cradle Arc -->
+    <path
+        android:pathData="M216,198 C216,242 296,242 296,198"
+        android:strokeColor="#0D1322"
+        android:strokeWidth="11"
+        android:strokeLineCap="round"
+        android:fillColor="#00000000" />
+
+    <!-- BOTTOM TEXT: 'తెలుగు' (Glowing Frosted 3D Telugu Typography) -->
+    <!-- 'తె' glyph -->
+    <path
+        android:pathData="M116,360 h36 v12 h-18 v14 M132,388 a10,10 0 1 0 20,0 M124,390 c0,22 36,22 36,0"
+        android:strokeColor="#FFFFFF"
+        android:strokeWidth="9"
+        android:strokeLineCap="round"
+        android:fillColor="#00000000" />
+
+    <!-- 'లు' glyph -->
+    <path
+        android:pathData="M236,360 C210,360 210,402 236,402 C262,402 262,360 236,360 Z M262,388 v30"
+        android:strokeColor="#FFFFFF"
+        android:strokeWidth="9"
+        android:strokeLineCap="round"
+        android:fillColor="#00000000" />
+
+    <!-- 'గు' glyph -->
+    <path
+        android:pathData="M344,360 C318,360 318,402 344,402 C370,402 370,360 344,360 Z M370,388 v30"
+        android:strokeColor="#FFFFFF"
+        android:strokeWidth="9"
+        android:strokeLineCap="round"
+        android:fillColor="#00000000" />
+
+</vector>
