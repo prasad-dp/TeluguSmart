@@ -51,11 +51,13 @@ class TeluguTransliterationEngineTest {
     fun `test empty and whitespace input handling`() {
         val emptyResult = TeluguTransliterationEngine.transliterate("")
         assertTrue(emptyResult.first.isNotEmpty())
-        assertTrue(emptyResult.second.isEmpty())
+        assertTrue(emptyResult.second.isNotEmpty())
         assertTrue(emptyResult.third.isNotEmpty())
 
         val spacesResult = TeluguTransliterationEngine.transliterate("     ")
         assertTrue(spacesResult.first.isNotEmpty())
+        assertTrue(spacesResult.second.isNotEmpty())
+        assertTrue(spacesResult.third.isNotEmpty())
 
         // Leading and trailing spaces should be trimmed before lookup
         val trimmedMatch = TeluguTransliterationEngine.transliterate("  repu  ")
