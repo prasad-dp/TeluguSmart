@@ -52,6 +52,7 @@ import com.example.engine.TeluguScriptConstants
 fun GuninthaluPopup(
     modifier: Modifier = Modifier,
     initialConsonant: String = "క",
+    initialTab: Int = 0,
     palette: KeyboardPalette,
     onSelectChar: (String) -> Unit,
     onDismiss: () -> Unit
@@ -59,7 +60,7 @@ fun GuninthaluPopup(
     var activeConsonant by remember(initialConsonant) {
         mutableStateOf(if (initialConsonant.isNotEmpty()) initialConsonant.take(1) else "క")
     }
-    var selectedTab by remember { mutableIntStateOf(0) }
+    var selectedTab by remember(initialTab) { mutableIntStateOf(initialTab) }
 
     val guninthaluList = remember(activeConsonant) { TeluguScriptConstants.getGuninthaluFor(activeConsonant) }
     val vottuluList = remember(activeConsonant) { TeluguScriptConstants.getVottuluFor(activeConsonant) }

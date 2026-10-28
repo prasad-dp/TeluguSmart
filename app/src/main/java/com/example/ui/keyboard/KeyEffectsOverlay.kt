@@ -99,8 +99,9 @@ fun KeyEffectLayer(
             val speed = rnd.nextFloat() * 70f + 30f
             val color = when (effectType) {
                 KeyboardEffectType.CYBER_CYAN -> listOf(Color(0xFF00F0FF), Color(0xFF38BDF8), Color(0xFF67E8F9), Color.White).random(rnd)
-                KeyboardEffectType.AMBER_FIRE -> listOf(Color(0xFFF59E0B), Color(0xFFEF4444), Color(0xFFFBBF24), Color(0xFFF97316)).random(rnd)
                 KeyboardEffectType.NEON_GREEN -> listOf(Color(0xFF10B981), Color(0xFF22C55E), Color(0xFF4ADE80), Color(0xFF86EFAC)).random(rnd)
+                KeyboardEffectType.PEARL_WHITE -> listOf(Color.White, Color(0xFFF8FAFC), Color(0xFFE2E8F0), Color(0xFFCBD5E1)).random(rnd)
+                KeyboardEffectType.AMBER_FIRE -> listOf(Color(0xFFF59E0B), Color(0xFFEF4444), Color(0xFFFBBF24), Color(0xFFF97316)).random(rnd)
                 KeyboardEffectType.MAGENTA_BURST -> listOf(Color(0xFFEC4899), Color(0xFFD946EF), Color(0xFFA855F7), Color(0xFFF472B6)).random(rnd)
                 KeyboardEffectType.RAINBOW_WAVE -> listOf(Color(0xFFFF0055), Color(0xFFFFAA00), Color(0xFF00FF66), Color(0xFF00DDFF), Color(0xFFAA00FF)).random(rnd)
                 KeyboardEffectType.SPARKLE_STARS -> listOf(Color(0xFFFDE047), Color(0xFFF59E0B), Color(0xFFFEF08A), Color.White).random(rnd)
@@ -297,6 +298,26 @@ fun KeyEffectLayer(
                     style = Stroke(width = 3f * (1f - currentProgress))
                 )
             }
+            KeyboardEffectType.PEARL_WHITE -> {
+                // Desh-style Crisp Pearl White neon key pulse & border snap
+                val currentRadius = currentProgress * maxRadius * 0.9f
+                val whiteRadius = (currentRadius + 8f).coerceAtLeast(1f)
+                drawCircle(
+                    brush = Brush.radialGradient(
+                        colors = listOf(Color.White.copy(alpha = 0.75f * alpha), Color(0xFFE2E8F0).copy(alpha = 0.25f * alpha), Color.Transparent),
+                        center = Offset(centerX, centerY),
+                        radius = whiteRadius
+                    ),
+                    radius = whiteRadius,
+                    center = Offset(centerX, centerY)
+                )
+                drawRoundRect(
+                    color = Color.White.copy(alpha = alpha * 0.9f),
+                    size = size,
+                    cornerRadius = androidx.compose.ui.geometry.CornerRadius(16f, 16f),
+                    style = Stroke(width = 3f * (1f - currentProgress))
+                )
+            }
             KeyboardEffectType.AMBER_FIRE -> {
                 // Fiery glow bloom
                 val currentRadius = currentProgress * maxRadius
@@ -440,11 +461,13 @@ fun EffectCardItem(
         KeyboardEffectType.CYBER_CYAN -> Color(0xFF0C1F2C)
         KeyboardEffectType.AMBER_FIRE -> Color(0xFF2A1B0A)
         KeyboardEffectType.NEON_GREEN -> Color(0xFF0C2419)
+        KeyboardEffectType.PEARL_WHITE -> Color(0xFF1A1F29)
         KeyboardEffectType.MAGENTA_BURST -> Color(0xFF280E24)
         KeyboardEffectType.RAINBOW_WAVE -> Color(0xFF161522)
         KeyboardEffectType.SPARKLE_STARS -> Color(0xFF241F10)
         KeyboardEffectType.WATER_RIPPLE -> Color(0xFF0C1C2A)
         KeyboardEffectType.HEART_POP -> Color(0xFF2A121D)
+        else -> Color(0xFF1E293B)
     }
 
     val keyBg = when (effect) {
@@ -456,6 +479,7 @@ fun EffectCardItem(
         KeyboardEffectType.CYBER_CYAN -> Color(0xFF163242)
         KeyboardEffectType.AMBER_FIRE -> Color(0xFF3F2613)
         KeyboardEffectType.NEON_GREEN -> Color(0xFF143B27)
+        KeyboardEffectType.PEARL_WHITE -> Color(0xFF2E3846)
         KeyboardEffectType.MAGENTA_BURST -> Color(0xFF3D1B37)
         KeyboardEffectType.RAINBOW_WAVE -> Color(0xFF262334)
         KeyboardEffectType.SPARKLE_STARS -> Color(0xFF38301B)
@@ -473,6 +497,7 @@ fun EffectCardItem(
         KeyboardEffectType.CYBER_CYAN -> Color(0xFF00F0FF)
         KeyboardEffectType.AMBER_FIRE -> Color(0xFFF59E0B)
         KeyboardEffectType.NEON_GREEN -> Color(0xFF22C55E)
+        KeyboardEffectType.PEARL_WHITE -> Color.White
         KeyboardEffectType.MAGENTA_BURST -> Color(0xFFD946EF)
         KeyboardEffectType.RAINBOW_WAVE -> Color(0xFF00DDFF)
         KeyboardEffectType.SPARKLE_STARS -> Color(0xFFEAB308)

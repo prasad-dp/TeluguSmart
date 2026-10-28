@@ -86,7 +86,8 @@ fun KeyboardRootView(
     }
 
     // Guninthalu Popover state
-    var selectedConsonantForPopup by remember { mutableStateOf<String?>(null) }
+    data class ConsonantPopupState(val consonant: String, val initialTab: Int = 0)
+    var selectedConsonantForPopup by remember { mutableStateOf<ConsonantPopupState?>(null) }
 
     // Live Key Tap Effect trigger timestamp
     var lastKeyTapTime by remember { mutableStateOf(0L) }
@@ -520,9 +521,9 @@ fun KeyboardRootView(
                                             deleteBackInternal()
                                             commitTextInternal(newChar)
                                         },
-                                        onOpenGuninthaluPopup = { consonant ->
+                                        onOpenGuninthaluPopup = { consonant, initialTab ->
                                             triggerKeyEffect()
-                                            selectedConsonantForPopup = consonant
+                                            selectedConsonantForPopup = ConsonantPopupState(consonant, initialTab)
                                         },
                                         onShiftToggle = { isShifted = !isShifted },
                                         onBackspace = {
@@ -637,9 +638,10 @@ fun KeyboardRootView(
             )
 
             // Dynamic Guninthalu Floating Popover
-            selectedConsonantForPopup?.let { consonant ->
+            selectedConsonantForPopup?.let { popupState ->
                 GuninthaluPopup(
-                    initialConsonant = consonant,
+                    initialConsonant = popupState.consonant,
+                    initialTab = popupState.initialTab,
                     palette = palette,
                     onSelectChar = { char ->
                         commitTextInternal(char)

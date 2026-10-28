@@ -11,7 +11,9 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.rounded.Backspace
 import androidx.compose.material.icons.rounded.Check
@@ -45,7 +47,7 @@ fun NativeTeluguKeyGrid(
     onReplaceLastCharAndCommit: (String) -> Unit = { char ->
         onKeyPress(char)
     },
-    onOpenGuninthaluPopup: (String) -> Unit = {},
+    onOpenGuninthaluPopup: (String, Int) -> Unit = { _, _ -> },
     onShiftToggle: () -> Unit = {},
     onBackspace: () -> Unit,
     onBackspaceSwipeDelete: () -> Unit,
@@ -80,6 +82,17 @@ fun NativeTeluguKeyGrid(
             c + "ం",      // 14: సున్నా / అనుస్వార (కం)
             c + "ః",      // 15: విసర్గ (కః)
             c + "్"       // 16: పొల్లు / విరామ (క్)
+        )
+    }
+
+    // Helper to generate the top 4 common conjunct shortcuts for a consonant
+    fun getTopVottulu(c: String): List<String> {
+        val virama = "్"
+        return listOf(
+            c + virama + c,        // ద్విత్వ (double consonant: క్క, త్త, etc.)
+            c + virama + "ర",      // ర-వత్తు (క్ర, ప్ర, etc.)
+            c + virama + "య",      // య-వత్తు (క్య, త్య, etc.)
+            c + virama + "వ"       // వ-వత్తు (క్వ, ద్వ, etc.)
         )
     }
 
@@ -132,7 +145,7 @@ fun NativeTeluguKeyGrid(
                     },
                     onLongClick = {
                         if (activeConsonant != null) {
-                            onOpenGuninthaluPopup(activeConsonant!!)
+                            onOpenGuninthaluPopup(activeConsonant!!, 0)
                         }
                     }
                 )
@@ -177,7 +190,7 @@ fun NativeTeluguKeyGrid(
                     },
                     onLongClick = {
                         activeConsonant = char
-                        onOpenGuninthaluPopup(char)
+                        onOpenGuninthaluPopup(char, 1)
                     }
                 )
             }
@@ -219,7 +232,7 @@ fun NativeTeluguKeyGrid(
                     },
                     onLongClick = {
                         activeConsonant = char
-                        onOpenGuninthaluPopup(char)
+                        onOpenGuninthaluPopup(char, 1)
                     }
                 )
             }
@@ -244,7 +257,7 @@ fun NativeTeluguKeyGrid(
                     },
                     onLongClick = {
                         activeConsonant = char
-                        onOpenGuninthaluPopup(char)
+                        onOpenGuninthaluPopup(char, 1)
                     }
                 )
             }
@@ -269,7 +282,7 @@ fun NativeTeluguKeyGrid(
                     },
                     onLongClick = {
                         activeConsonant = char
-                        onOpenGuninthaluPopup(char)
+                        onOpenGuninthaluPopup(char, 1)
                     }
                 )
             }
@@ -434,22 +447,74 @@ fun NativeTeluguKeyGrid(
             }
 
             if (activeConsonant != null) {
-                Box(
+                Row(
                     modifier = Modifier
-                        .clip(CircleShape)
-                        .background(palette.specialKeyBackground)
-                        .clickable { activeConsonant = null }
-                        .padding(horizontal = 10.dp, vertical = 3.dp)
+                        .weight(1f)
+                        .padding(horizontal = 4.dp),
+                    horizontalArrangement = Arrangement.Center,
+                    verticalAlignment = Alignment.CenterVertically
                 ) {
-                    Text(
-                        text = "అ ఆ (Vowels)",
-                        fontSize = 11.sp,
-                        fontWeight = FontWeight.Bold,
-                        color = palette.accent
-                    )
+                    // Reset to Vowels
+                    Box(
+                        modifier = Modifier
+                            .clip(RoundedCornerShape(8.dp))
+                            .background(palette.specialKeyBackground)
+                            .clickable { activeConsonant = null }
+                            .padding(horizontal = 8.dp, vertical = 4.dp)
+                    ) {
+                        Text(
+                            text = "అ ఆ",
+                            fontSize = 11.sp,
+                            fontWeight = FontWeight.Bold,
+                            color = palette.accent
+                        )
+                    }
+
+                    Spacer(modifier = Modifier.width(6.dp))
+
+                    // Top 4 Conjunct pills
+                    val topVottulu = remember(activeConsonant) { getTopVottulu(activeConsonant!!) }
+                    topVottulu.forEach { conjunct ->
+                        Box(
+                            modifier = Modifier
+                                .clip(RoundedCornerShape(6.dp))
+                                .background(palette.keyBackground)
+                                .clickable {
+                                    onReplaceLastCharAndCommit(conjunct)
+                                    activeConsonant = null
+                                }
+                                .padding(horizontal = 7.dp, vertical = 3.dp)
+                        ) {
+                            Text(
+                                text = conjunct,
+                                fontSize = 13.sp,
+                                fontWeight = FontWeight.SemiBold,
+                                color = palette.keyText
+                            )
+                        }
+                        Spacer(modifier = Modifier.width(4.dp))
+                    }
+
+                    // "వత్తులు…" button to open full modal on Conjuncts tab
+                    Box(
+                        modifier = Modifier
+                            .clip(RoundedCornerShape(8.dp))
+                            .background(palette.specialKeyBackground)
+                            .clickable {
+                                onOpenGuninthaluPopup(activeConsonant!!, 1)
+                            }
+                            .padding(horizontal = 6.dp, vertical = 4.dp)
+                    ) {
+                        Text(
+                            text = "వత్తులు…",
+                            fontSize = 11.sp,
+                            fontWeight = FontWeight.Bold,
+                            color = palette.accent
+                        )
+                    }
                 }
             } else {
-                Spacer(modifier = Modifier.size(1.dp))
+                Spacer(modifier = Modifier.weight(1f))
             }
 
             IconButton(

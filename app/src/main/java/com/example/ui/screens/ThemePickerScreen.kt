@@ -215,6 +215,17 @@ fun ThemePickerScreen(
             pillColor = Color(0xFF0F172A),
             defaultAccent = Color(0xFF06B6D4),
             dots = listOf(Color(0xFF06B6D4), Color(0xFF22C55E), Color(0xFFF97316), Color(0xFFEF4444), Color(0xFFEAB308), Color(0xFFA855F7))
+        ),
+        // Card 7: Desh Mechanical Glow (Obsidian with Cyber Cyan outlines)
+        ThemeColorCardItem(
+            id = "mechanical_glow",
+            themeType = KeyboardThemeType.MECHANICAL_GLOW,
+            name = "Mechanical Glow",
+            bg = Color(0xFF090A0F),
+            text = Color(0xFF00F0FF),
+            pillColor = Color(0xFF161925),
+            defaultAccent = Color(0xFF00E5FF),
+            dots = listOf(Color(0xFF00F0FF), Color(0xFF0284C7), Color(0xFF22C55E))
         )
     )
 
@@ -419,16 +430,17 @@ fun ThemePickerScreen(
                             .fillMaxWidth()
                             .testTag("effects_lazy_row")
                     ) {
-                        // Top Industry Architecture Key Tap Effects + Clean Default
+                        // Top Industry Architecture Key Tap Effects + Desh Keyboard Pulses
                         val curatedEffects = listOf(
+                            Pair(KeyboardEffectType.CYBER_CYAN, "💙 Desh Blue"),
+                            Pair(KeyboardEffectType.NEON_GREEN, "💚 Desh Green"),
+                            Pair(KeyboardEffectType.PEARL_WHITE, "🤍 Desh White"),
                             Pair(KeyboardEffectType.MORPH_LIGATURE, "⚡ <4ms Morph"),
                             Pair(KeyboardEffectType.HAPTIC_3D_DEPTH, "🎯 <2ms 3D"),
                             Pair(KeyboardEffectType.GLASS_BLOOM, "✨ <6ms Bloom"),
                             Pair(KeyboardEffectType.SHADER_WAVE, "🌊 <8ms Wave"),
                             Pair(KeyboardEffectType.MICRO_PARTICLES, "🎆 <8ms Particles"),
-                            Pair(KeyboardEffectType.CYBER_CYAN, "🔥 Popular"),
                             Pair(KeyboardEffectType.AMBER_FIRE, "✨ Festive"),
-                            Pair(KeyboardEffectType.NEON_GREEN, "⚡ Neon"),
                             Pair(KeyboardEffectType.RAINBOW_WAVE, "🌈 Chroma"),
                             Pair(KeyboardEffectType.SPARKLE_STARS, "⭐ Golden"),
                             Pair(KeyboardEffectType.NONE, "Clean")

@@ -42,7 +42,8 @@ enum class KeyboardThemeType(
     MATCHA_CREAM("Matcha Cream", "Warm ivory canvas with rich dark matcha green letters & sage accents", "High Contrast"),
     COFFEE_ESPRESSO("Caramel Espresso", "Warm creamy latte surface with deep roasted espresso dark typography", "High Contrast"),
     CYBER_NEON_CONTRAST("Cyber Neon Glow", "Obsidian night canvas with high-visibility neon gold & magenta typography", "High Contrast"),
-    NORDIC_GLACIER("Nordic Glacier", "Deep arctic navy surface with crystal ice-cyan illuminated glyphs", "High Contrast")
+    NORDIC_GLACIER("Nordic Glacier", "Deep arctic navy surface with crystal ice-cyan illuminated glyphs", "High Contrast"),
+    MECHANICAL_GLOW("Mechanical Glow (Cyber)", "Desh-style deep obsidian keyboard with electric cyan circuit key outlines", "High Contrast")
 }
 
 enum class KeyboardEffectType(
@@ -56,9 +57,10 @@ enum class KeyboardEffectType(
     GLASS_BLOOM("glass_bloom", "Glassmorphic Bloom", "Frosted glass halo burst & specular specular bloom (<6ms)"),
     SHADER_WAVE("shader_wave", "Reactive Shader Wave", "Sine-wave shockwave sweep across key matrix (<8ms)"),
     MICRO_PARTICLES("micro_particles", "Micro-Particle Emitter", "Zero-allocation physics particle explosion (<8ms)"),
-    CYBER_CYAN("cyber_cyan", "Cyan Aurora", "Soft glowing cyan & mint aura with halo bloom"),
+    CYBER_CYAN("cyber_cyan", "Cyan Aurora (Electric Blue)", "Desh-style electric cyan blue key highlight pulse (<4ms)"),
+    NEON_GREEN("neon_green", "Emerald Neon Pulse", "Desh-style electric neon green border pulse (<4ms)"),
+    PEARL_WHITE("pearl_white", "Pearl White Pulse", "Desh-style crisp pearl white key highlight flash (<4ms)"),
     AMBER_FIRE("amber_fire", "Amber Glow", "Warm golden ember glow with flame sparks"),
-    NEON_GREEN("neon_green", "Emerald Neon", "Electric neon green outline with pulse aura"),
     MAGENTA_BURST("magenta_burst", "Magenta Glow", "Vibrant cyber pink & magenta energy pulse"),
     RAINBOW_WAVE("rainbow_wave", "RGB Chroma", "Dynamic full-spectrum chromatic wave burst"),
     SPARKLE_STARS("sparkle_stars", "Sparkle Stars", "Golden celestial twinkling star particles"),

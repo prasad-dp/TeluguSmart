@@ -175,6 +175,20 @@ object KeyboardThemeColors {
                 suggestionText = Color(0xFFE0F2FE),
                 border = Color(0x3338BDF8)
             )
+            KeyboardThemeType.MECHANICAL_GLOW -> KeyboardPalette(
+                background = Color(0xFF090A0F),
+                surface = Color(0xFF12141C),
+                keyBackground = Color(0xFF161925),
+                keyText = Color(0xFFFFFFFF),
+                keySecondaryText = Color(0xFF00F0FF),
+                specialKeyBackground = Color(0xFF0D0F17),
+                specialKeyText = Color(0xFF00F0FF),
+                accent = Color(0xFF00E5FF),
+                accentText = Color(0xFF000000),
+                suggestionBackground = Color(0xFF12141C),
+                suggestionText = Color(0xFFF0FDF4),
+                border = Color(0x6600F0FF)
+            )
         }
         return if (customAccentHex != null) {
             val customCol = Color(customAccentHex)

@@ -1,15 +1,34 @@
-name: Build Android APK & AAB
+name: Build Android APK
 
 on:
+  push:
+    branches: [ main, master ]
+    tags:
+      - 'v*'
+  pull_request:
+    branches: [ main, master ]
   workflow_dispatch:
+    inputs:
+      build_type:
+        description: 'Build Type'
+        required: true
+        default: 'debug'
+        type: choice
+        options:
+          - debug
+          - release
+          - both
+
+permissions:
+  contents: write
 
 jobs:
   build:
-    name: Build APK and AAB
+    name: Build Android APK
     runs-on: ubuntu-latest
 
     steps:
-      - name: Checkout repository
+      - name: Checkout Repository
         uses: actions/checkout@v4
 
       - name: Set up JDK 17
@@ -18,37 +37,121 @@ jobs:
           distribution: 'temurin'
           java-version: '17'
 
+      - name: Set up Android SDK
+        uses: android-actions/setup-android@v3
+
+      - name: Accept Android SDK Licenses
+        run: yes | sdkmanager --licenses || true
+
       - name: Setup Gradle
         uses: gradle/actions/setup-gradle@v4
         with:
           validate-wrappers: false
 
-      - name: Grant execute permission for gradlew
+      - name: Make gradlew executable
         run: chmod +x gradlew
 
-      - name: Create Mock google-services.json (if missing)
+      - name: Prepare Configuration & Keys
         run: |
-          if [ ! -f "app/google-services.json" ]; then
-            echo '{"project_info":{"project_number":"0","project_id":"telugusmart"},"client":[{"client_info":{"mobilesdk_app_id":"1:0:android:0","android_client_info":{"package_name":"com.aistudio.telugusmartkeyboard.vkyxqz"}},"api_key":[{"current_key":""}]}]}' > app/google-services.json
+          # 1. Ensure .env exists
+          if [ ! -f ".env" ]; then
+            if [ -f ".env.example" ]; then
+              cp .env.example .env
+              echo "Created .env from .env.example"
+            else
+              touch .env
+              echo "Created empty .env"
+            fi
           fi
 
+          # 2. Ensure mock google-services.json exists
+          if [ ! -f "app/google-services.json" ]; then
+            mkdir -p app
+            echo '{"project_info":{"project_number":"0","project_id":"telugusmart"},"client":[{"client_info":{"mobilesdk_app_id":"1:0:android:0","android_client_info":{"package_name":"com.aistudio.telugusmartkeyboard.vkyxqz"}},"api_key":[{"current_key":""}]}]}' > app/google-services.json
+            echo "Created mock app/google-services.json"
+          fi
+
+          # 3. Generate debug.keystore if missing
+          if [ ! -f "debug.keystore" ]; then
+            echo "Generating debug.keystore..."
+            keytool -genkey -v -keystore debug.keystore -storepass android -alias androiddebugkey -keypass android -keyalg RSA -keysize 2048 -validity 10000 -dname "CN=Android Debug,O=Android,C=US"
+          fi
+          mkdir -p ~/.android
+          cp debug.keystore ~/.android/debug.keystore
+
       - name: Build Debug APK
-        run: ./gradlew assembleDebug --stacktrace
+        if: github.event.inputs.build_type == 'debug' || github.event.inputs.build_type == 'both' || github.event.inputs.build_type == '' || github.event_name != 'workflow_dispatch'
+        run: ./gradlew assembleDebug --no-daemon --stacktrace
 
-      - name: Build Debug AAB (Android App Bundle)
-        run: ./gradlew bundleDebug --stacktrace || true
+      - name: Build Release APK
+        if: github.event.inputs.build_type == 'release' || github.event.inputs.build_type == 'both'
+        run: ./gradlew assembleRelease --no-daemon --stacktrace || true
 
-      - name: Upload Debug APK Artifact
+      - name: Build Debug AAB Bundle
+        if: github.event.inputs.build_type == 'both'
+        run: ./gradlew bundleDebug --no-daemon --stacktrace || true
+
+      - name: Collect & Organize APK Artifacts
+        run: |
+          mkdir -p output-apks
+          # Copy all generated APKs
+          find app/build/outputs/apk -type f -name "*.apk" | while read -r apk_file; do
+            filename=$(basename "$apk_file")
+            cp "$apk_file" "output-apks/$filename"
+            # Also create a user-friendly named copy for easy identification
+            if [[ "$filename" == *"debug"* ]]; then
+              cp "$apk_file" "output-apks/TeluguSmartKeyboard-debug.apk"
+            fi
+            if [[ "$filename" == *"release"* ]]; then
+              cp "$apk_file" "output-apks/TeluguSmartKeyboard-release.apk"
+            fi
+          done
+          echo "Output files ready for upload:"
+          ls -lh output-apks/
+
+      - name: Upload APK Artifact
         uses: actions/upload-artifact@v4
         with:
-          name: telugu-smart-keyboard-debug-apk
-          path: app/build/outputs/apk/debug/*.apk
+          name: TeluguSmart-Android-APK
+          path: output-apks/*.apk
           retention-days: 30
 
-      - name: Upload App Bundle Artifact
+      - name: Upload AAB Bundle Artifact
         uses: actions/upload-artifact@v4
         if: always()
         with:
-          name: telugu-smart-keyboard-aab
-          path: app/build/outputs/bundle/debug/*.aab
+          name: TeluguSmart-Android-AAB
+          path: app/build/outputs/bundle/**/*.aab
           retention-days: 30
+          if-no-files-found: ignore
+
+      - name: Add Step Summary
+        run: |
+          echo "## 📱 Android Build Succeeded!" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "| Build Property | Details |" >> $GITHUB_STEP_SUMMARY
+          echo "|---|---|" >> $GITHUB_STEP_SUMMARY
+          echo "| **Package ID** | \`com.aistudio.telugusmartkeyboard.vkyxqz\` |" >> $GITHUB_STEP_SUMMARY
+          echo "| **Branch** | \`${{ github.ref_name }}\` |" >> $GITHUB_STEP_SUMMARY
+          echo "| **Commit** | \`${{ github.sha }}\` |" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "### 📦 Available APK Files" >> $GITHUB_STEP_SUMMARY
+          echo "\`\`\`text" >> $GITHUB_STEP_SUMMARY
+          ls -lh output-apks/ >> $GITHUB_STEP_SUMMARY
+          echo "\`\`\`" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "### 📥 How to Install the APK on Your Android Device" >> $GITHUB_STEP_SUMMARY
+          echo "1. Scroll down to the **Artifacts** section at the bottom of this page." >> $GITHUB_STEP_SUMMARY
+          echo "2. Click **TeluguSmart-Android-APK** to download the zip." >> $GITHUB_STEP_SUMMARY
+          echo "3. Extract the downloaded zip file." >> $GITHUB_STEP_SUMMARY
+          echo "4. Transfer **TeluguSmartKeyboard-debug.apk** to your Android phone (or download directly using your phone's browser)." >> $GITHUB_STEP_SUMMARY
+          echo "5. Tap the APK file to install (allow *Install from Unknown Sources* if prompted)." >> $GITHUB_STEP_SUMMARY
+
+      - name: Publish GitHub Release (on tag)
+        if: startsWith(github.ref, 'refs/tags/v')
+        uses: softprops/action-gh-release@v2
+        with:
+          files: output-apks/*.apk
+          generate_release_notes: true
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
