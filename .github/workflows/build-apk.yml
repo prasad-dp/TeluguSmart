@@ -74,6 +74,19 @@ jobs:
           mkdir -p ~/.android
           cp debug.keystore ~/.android/debug.keystore
 
+      # Run unit test suites before building APK. If tests fail, pipeline stops immediately.
+      - name: Run Unit Tests & Edge Case Test Suite
+        run: ./gradlew testDebugUnitTest --no-daemon --stacktrace
+
+      - name: Upload Test Report Artifact
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: TeluguSmart-Unit-Test-Report
+          path: app/build/reports/tests/testDebugUnitTest/
+          retention-days: 14
+          if-no-files-found: ignore
+
       - name: Build Debug APK
         if: github.event.inputs.build_type == 'debug' || github.event.inputs.build_type == 'both' || github.event.inputs.build_type == ''
         run: ./gradlew assembleDebug --no-daemon --stacktrace
@@ -129,6 +142,7 @@ jobs:
           echo "| **Package ID** | \`com.aistudio.telugusmartkeyboard.vkyxqz\` |" >> $GITHUB_STEP_SUMMARY
           echo "| **Branch** | \`${{ github.ref_name }}\` |" >> $GITHUB_STEP_SUMMARY
           echo "| **Commit** | \`${{ github.sha }}\` |" >> $GITHUB_STEP_SUMMARY
+          echo "| **Unit Tests** | Passed All Test Suites & Edge Cases |" >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
           echo "### 📦 Available APK Files" >> $GITHUB_STEP_SUMMARY
           echo "\`\`\`text" >> $GITHUB_STEP_SUMMARY

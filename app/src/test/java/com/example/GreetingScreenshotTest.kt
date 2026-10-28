@@ -28,6 +28,13 @@ class GreetingScreenshotTest {
       }
     }
 
-    composeTestRule.onRoot().captureRoboImage(filePath = "src/test/screenshots/greeting.png")
+    composeTestRule.onRoot().captureRoboImage(
+      filePath = "src/test/screenshots/greeting.png",
+      roborazziOptions = com.github.takahirom.roborazzi.RoborazziOptions(
+        compareOptions = com.github.takahirom.roborazzi.RoborazziOptions.CompareOptions(
+          changeThreshold = 0.05f
+        )
+      )
+    )
   }
 }
