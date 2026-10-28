@@ -50,3 +50,4 @@ class TeluguTranslatorEngineTest {
         assertTrue(fallback.contains("Translation: కొత్తమాటలు"))
     }
 }
+

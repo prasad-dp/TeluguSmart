@@ -36,3 +36,4 @@ class KeyboardThemeColorsTest {
         assertEquals(Color(0xFF0284C7), palette.accent)
     }
 }
+

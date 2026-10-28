@@ -80,3 +80,4 @@ class TeluguScriptConstantsTest {
         assertTrue(vottulu.contains("క్య"))
     }
 }
+

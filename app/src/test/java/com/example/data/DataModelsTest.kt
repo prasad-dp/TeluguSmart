@@ -65,3 +65,4 @@ class DataModelsTest {
         assertEquals(OneHandedMode.OFF, prefs.oneHandedMode)
     }
 }
+

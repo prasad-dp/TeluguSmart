@@ -70,3 +70,4 @@ class ToneRephraserTest {
         assertTrue(longText.endsWith("..."))
     }
 }
+
