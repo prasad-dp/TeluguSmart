@@ -95,12 +95,6 @@ fun KeyboardRootView(
         if (preferences.activeEffect != KeyboardEffectType.NONE) {
             lastKeyTapTime = System.currentTimeMillis()
         }
-        if (preferences.keySoundFeedback) {
-            SoundFeedbackHelper.playKeySound(preferences.soundProfile)
-        }
-        if (preferences.keyHapticFeedback) {
-            SoundFeedbackHelper.triggerHaptic(preferences.hapticStrength)
-        }
     }
 
     // Internal typing buffer for Tenglish transliteration
@@ -156,10 +150,14 @@ fun KeyboardRootView(
 
     val moveCursorInternal = { delta: Int ->
         if (inputConnection != null) {
-            // Delta cursor shift
-            val selected = inputConnection.getSelectedText(0)?.length ?: 0
-            // Shift by step
-            inputConnection.commitCorrection(null)
+            try {
+                val keyEvent = if (delta < 0) {
+                    android.view.KeyEvent(android.view.KeyEvent.ACTION_DOWN, android.view.KeyEvent.KEYCODE_DPAD_LEFT)
+                } else {
+                    android.view.KeyEvent(android.view.KeyEvent.ACTION_DOWN, android.view.KeyEvent.KEYCODE_DPAD_RIGHT)
+                }
+                inputConnection.sendKeyEvent(keyEvent)
+            } catch (_: Exception) {}
         }
     }
 
@@ -174,8 +172,9 @@ fun KeyboardRootView(
     }
 
     val startVoiceRecognition = {
-        if (SpeechRecognizer.isRecognitionAvailable(context)) {
-            val recognizer = SpeechRecognizer.createSpeechRecognizer(context)
+        try {
+            if (SpeechRecognizer.isRecognitionAvailable(context)) {
+                val recognizer = SpeechRecognizer.createSpeechRecognizer(context)
             speechRecognizer = recognizer
             val intent = Intent(RecognizerIntent.ACTION_RECOGNIZE_SPEECH).apply {
                 putExtra(RecognizerIntent.EXTRA_LANGUAGE_MODEL, RecognizerIntent.LANGUAGE_MODEL_FREE_FORM)
@@ -205,6 +204,9 @@ fun KeyboardRootView(
                 override fun onEvent(eventType: Int, params: Bundle?) {}
             })
             recognizer.startListening(intent)
+            }
+        } catch (_: Exception) {
+            isListeningVoice = false
         }
     }
 

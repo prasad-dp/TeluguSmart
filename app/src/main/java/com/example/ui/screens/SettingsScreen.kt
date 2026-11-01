@@ -1,4 +1,5 @@
 package com.example.ui.screens
+import androidx.compose.ui.draw.scale
 
 import android.widget.Toast
 import androidx.compose.foundation.clickable
@@ -15,7 +16,6 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Accessibility
 import androidx.compose.material.icons.filled.AutoAwesome
 import androidx.compose.material.icons.filled.ChevronRight
 import androidx.compose.material.icons.filled.DeleteOutline
@@ -42,6 +42,7 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableFloatStateOf
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -87,6 +88,7 @@ fun SettingsScreen(
     var currentHeightPercent by remember { mutableIntStateOf(preferences.keyboardHeightPercent) }
     var soundEnabled by remember { mutableStateOf(preferences.keySoundFeedback) }
     var soundProfile by remember { mutableStateOf(preferences.soundProfile) }
+    var soundVolume by remember { mutableFloatStateOf(preferences.keySoundVolume) }
     var hapticEnabled by remember { mutableStateOf(preferences.keyHapticFeedback) }
     var hapticStrength by remember { mutableStateOf(preferences.hapticStrength) }
     var numberRowEnabled by remember { mutableStateOf(preferences.showNumberRow) }
@@ -107,8 +109,6 @@ fun SettingsScreen(
         SettingItem("emojis", "Emojis, numbers & symbols", Icons.Default.EmojiEmotions, Color(0xFF059669)),
         SettingItem("typing", "Typing & Next-word prediction", Icons.Default.Keyboard, Color(0xFF0D9488)),
         SettingItem("gestures", "Handwriting & Glide typing", Icons.Default.Gesture, Color(0xFF059669)),
-        SettingItem("extras", "Extra features", Icons.Default.AutoAwesome, Color(0xFF0D9488)),
-        SettingItem("accessibility", "Accessibility", Icons.Default.Accessibility, Color(0xFF059669)),
         SettingItem("premium", "Premium", Icons.Default.Star, Color(0xFF0D9488)),
         SettingItem("clear_data", "Clear data", Icons.Default.DeleteOutline, Color(0xFF059669)),
         SettingItem("help", "Help", Icons.Default.HelpOutline, Color(0xFF0D9488))
@@ -135,6 +135,7 @@ fun SettingsScreen(
         ) {
             Column(modifier = Modifier.fillMaxWidth()) {
                 settingItems.forEachIndexed { index, item ->
+                    val isBorderSetting = item.id == "key_borders"
                     Row(
                         modifier = Modifier
                             .fillMaxWidth()
@@ -154,14 +155,15 @@ fun SettingsScreen(
                                     else -> activeDialog = item.id
                                 }
                             }
-                            .padding(horizontal = 18.dp, vertical = 15.dp)
+                            .padding(horizontal = 18.dp, vertical = if (isBorderSetting) 10.dp else 14.dp)
                             .testTag("setting_row_${item.id}"),
                         verticalAlignment = Alignment.CenterVertically,
                         horizontalArrangement = Arrangement.SpaceBetween
                     ) {
                         Row(
                             verticalAlignment = Alignment.CenterVertically,
-                            horizontalArrangement = Arrangement.spacedBy(16.dp)
+                            horizontalArrangement = Arrangement.spacedBy(16.dp),
+                            modifier = Modifier.weight(1f, fill = false)
                         ) {
                             Icon(
                                 imageVector = item.icon,
@@ -169,15 +171,24 @@ fun SettingsScreen(
                                 tint = item.iconTint,
                                 modifier = Modifier.size(22.dp)
                             )
-                            Text(
-                                text = item.title,
-                                fontSize = 15.sp,
-                                fontWeight = FontWeight.Medium,
-                                color = MaterialTheme.colorScheme.onSurface
-                            )
+                            Column {
+                                Text(
+                                    text = item.title,
+                                    fontSize = 15.sp,
+                                    fontWeight = FontWeight.Medium,
+                                    color = MaterialTheme.colorScheme.onSurface
+                                )
+                                if (isBorderSetting) {
+                                    Text(
+                                        text = if (keyBorderEnabled) "On • Key outlines visible" else "Off • Borderless keys",
+                                        fontSize = 11.5.sp,
+                                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                                    )
+                                }
+                            }
                         }
 
-                        if (item.id == "key_borders") {
+                        if (isBorderSetting) {
                             Switch(
                                 checked = keyBorderEnabled,
                                 onCheckedChange = { checked ->
@@ -191,9 +202,13 @@ fun SettingsScreen(
                                 },
                                 colors = SwitchDefaults.colors(
                                     checkedTrackColor = Color(0xFF047857),
-                                    checkedThumbColor = Color.White
+                                    checkedThumbColor = Color.White,
+                                    uncheckedTrackColor = if (isDarkMode) Color(0xFF334155) else Color(0xFFCBD5E1),
+                                    uncheckedThumbColor = Color.White
                                 ),
-                                modifier = Modifier.testTag("switch_setting_key_borders")
+                                modifier = Modifier
+                                    .scale(0.72f)
+                                    .testTag("switch_setting_key_borders")
                             )
                         } else {
                             Icon(
@@ -264,29 +279,37 @@ fun SettingsScreen(
                 title = { Text("One-Handed Mode & Layout", fontWeight = FontWeight.Bold) },
                 text = {
                     Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
-                        Text("Choose default keyboard docking alignment for easy one-hand typing:", fontSize = 13.sp)
-                        Row(
-                            modifier = Modifier.fillMaxWidth(),
-                            horizontalArrangement = Arrangement.spacedBy(8.dp)
-                        ) {
+                        Text(
+                            text = "Choose default keyboard docking alignment for easy one-hand typing:",
+                            fontSize = 13.sp,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                        Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
                             OneHandedMode.entries.forEach { mode ->
+                                val isSelected = (oneHandedMode == mode)
                                 FilterChip(
-                                    selected = (oneHandedMode == mode),
+                                    selected = isSelected,
                                     onClick = { oneHandedMode = mode },
                                     label = {
                                         Text(
-                                            when (mode) {
+                                            text = when (mode) {
                                                 OneHandedMode.OFF -> "Full Width"
                                                 OneHandedMode.LEFT -> "Left Hand"
                                                 OneHandedMode.RIGHT -> "Right Hand"
                                             },
-                                            fontSize = 12.sp
+                                            fontSize = 13.sp,
+                                            fontWeight = if (isSelected) FontWeight.SemiBold else FontWeight.Medium,
+                                            maxLines = 1,
+                                            softWrap = false
                                         )
                                     },
                                     colors = FilterChipDefaults.filterChipColors(
                                         selectedContainerColor = Color(0xFF047857),
                                         selectedLabelColor = Color.White
-                                    )
+                                    ),
+                                    modifier = Modifier
+                                        .fillMaxWidth()
+                                        .testTag("one_handed_mode_${mode.name.lowercase()}")
                                 )
                             }
                         }
@@ -327,13 +350,50 @@ fun SettingsScreen(
                                 checked = soundEnabled,
                                 onCheckedChange = {
                                     soundEnabled = it
-                                    if (it) SoundFeedbackHelper.playKeySound(soundProfile)
+                                    if (it) SoundFeedbackHelper.playKeySound(soundProfile, soundVolume)
                                 },
-                                colors = SwitchDefaults.colors(checkedTrackColor = Color(0xFF047857))
+                                colors = SwitchDefaults.colors(checkedTrackColor = Color(0xFF047857)),
+                                modifier = Modifier.scale(0.75f)
                             )
                         }
 
                         if (soundEnabled) {
+                            // Dedicated Volume Control Slider for Keypress Sound
+                            Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                                Row(
+                                    modifier = Modifier.fillMaxWidth(),
+                                    horizontalArrangement = Arrangement.SpaceBetween,
+                                    verticalAlignment = Alignment.CenterVertically
+                                ) {
+                                    Text(
+                                        text = "Key Sound Volume (శబ్ద స్థాయి):",
+                                        fontSize = 12.5.sp,
+                                        fontWeight = FontWeight.Medium,
+                                        color = MaterialTheme.colorScheme.onSurface
+                                    )
+                                    Text(
+                                        text = "${(soundVolume * 100).toInt()}%",
+                                        fontSize = 12.5.sp,
+                                        fontWeight = FontWeight.Bold,
+                                        color = Color(0xFF047857)
+                                    )
+                                }
+                                Slider(
+                                    value = soundVolume,
+                                    onValueChange = {
+                                        soundVolume = it
+                                    },
+                                    onValueChangeFinished = {
+                                        SoundFeedbackHelper.playKeySound(soundProfile, soundVolume)
+                                    },
+                                    valueRange = 0.10f..1.00f,
+                                    colors = SliderDefaults.colors(
+                                        thumbColor = Color(0xFF047857),
+                                        activeTrackColor = Color(0xFF047857)
+                                    )
+                                )
+                            }
+
                             Text("Sound Tone Profile (Tap to preview):", fontSize = 12.sp, color = Color.Gray)
                             Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
                                 KeyboardSoundProfile.entries.forEach { profile ->
@@ -341,12 +401,12 @@ fun SettingsScreen(
                                         selected = (soundProfile == profile),
                                         onClick = {
                                             soundProfile = profile
-                                            SoundFeedbackHelper.playKeySound(profile)
+                                            SoundFeedbackHelper.playKeySound(profile, soundVolume)
                                         },
                                         label = {
                                             Text(
                                                 when (profile) {
-                                                    KeyboardSoundProfile.DEFAULT_CLICK -> "🔊 Standard System Click"
+                                                    KeyboardSoundProfile.DEFAULT_CLICK -> "🔊 Standard Click"
                                                     KeyboardSoundProfile.MECHANICAL_THOCK -> "⌨️ Mechanical Switch"
                                                     KeyboardSoundProfile.TYPEWRITER -> "📜 Classic Typewriter"
                                                     KeyboardSoundProfile.WATER_DROP -> "💧 Water Bubble Pop"
@@ -379,7 +439,8 @@ fun SettingsScreen(
                                     hapticEnabled = it
                                     if (it) SoundFeedbackHelper.triggerHaptic(hapticStrength)
                                 },
-                                colors = SwitchDefaults.colors(checkedTrackColor = Color(0xFF047857))
+                                colors = SwitchDefaults.colors(checkedTrackColor = Color(0xFF047857)),
+                                modifier = Modifier.scale(0.75f)
                             )
                         }
 
@@ -421,6 +482,7 @@ fun SettingsScreen(
                         onUpdatePreferences(preferences.copy(
                             keySoundFeedback = soundEnabled,
                             soundProfile = soundProfile,
+                            keySoundVolume = soundVolume,
                             keyHapticFeedback = hapticEnabled,
                             hapticStrength = hapticStrength
                         ))
@@ -451,7 +513,8 @@ fun SettingsScreen(
                         Switch(
                             checked = numberRowEnabled,
                             onCheckedChange = { numberRowEnabled = it },
-                            colors = SwitchDefaults.colors(checkedTrackColor = Color(0xFF047857))
+                            colors = SwitchDefaults.colors(checkedTrackColor = Color(0xFF047857)),
+                                modifier = Modifier.scale(0.75f)
                         )
                     }
                 },
@@ -480,7 +543,8 @@ fun SettingsScreen(
                             Switch(
                                 checked = nextWordPredictionEnabled,
                                 onCheckedChange = { nextWordPredictionEnabled = it },
-                                colors = SwitchDefaults.colors(checkedTrackColor = Color(0xFF047857))
+                                colors = SwitchDefaults.colors(checkedTrackColor = Color(0xFF047857)),
+                                modifier = Modifier.scale(0.75f)
                             )
                         }
                         Row(
@@ -492,7 +556,8 @@ fun SettingsScreen(
                             Switch(
                                 checked = autoTranslitEnabled,
                                 onCheckedChange = { autoTranslitEnabled = it },
-                                colors = SwitchDefaults.colors(checkedTrackColor = Color(0xFF047857))
+                                colors = SwitchDefaults.colors(checkedTrackColor = Color(0xFF047857)),
+                                modifier = Modifier.scale(0.75f)
                             )
                         }
                         Row(
@@ -504,7 +569,8 @@ fun SettingsScreen(
                             Switch(
                                 checked = autoCapEnabled,
                                 onCheckedChange = { autoCapEnabled = it },
-                                colors = SwitchDefaults.colors(checkedTrackColor = Color(0xFF047857))
+                                colors = SwitchDefaults.colors(checkedTrackColor = Color(0xFF047857)),
+                                modifier = Modifier.scale(0.75f)
                             )
                         }
                     }
@@ -538,7 +604,8 @@ fun SettingsScreen(
                             Switch(
                                 checked = glideTypingEnabled,
                                 onCheckedChange = { glideTypingEnabled = it },
-                                colors = SwitchDefaults.colors(checkedTrackColor = Color(0xFF047857))
+                                colors = SwitchDefaults.colors(checkedTrackColor = Color(0xFF047857)),
+                                modifier = Modifier.scale(0.75f)
                             )
                         }
                         Text(
@@ -554,25 +621,6 @@ fun SettingsScreen(
                         activeDialog = null
                     }) {
                         Text("Done", color = Color(0xFF047857))
-                    }
-                }
-            )
-        }
-        "extras" -> {
-            AlertDialog(
-                onDismissRequest = { activeDialog = null },
-                title = { Text("Special Extra Features", fontWeight = FontWeight.Bold) },
-                text = {
-                    Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                        Text("• On-Device Telugu Sandhi Splitter: Active", fontSize = 13.sp)
-                        Text("• Telugu Idioms & Proverbs Dictionary: Active", fontSize = 13.sp)
-                        Text("• Kaomoji & Telugu Stickers: Active", fontSize = 13.sp)
-                        Text("• Zero Keystroke Logging Guarantee: Verified", fontSize = 13.sp)
-                    }
-                },
-                confirmButton = {
-                    TextButton(onClick = { activeDialog = null }) {
-                        Text("Close", color = Color(0xFF047857))
                     }
                 }
             )

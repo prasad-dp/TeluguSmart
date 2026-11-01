@@ -29,10 +29,29 @@ class KeyboardRepository(
             KeyboardThemeType.MIDNIGHT_SLATE
         }
 
+        val effectName = prefs.getString("active_effect", KeyboardEffectType.CYBER_CYAN.name)
+            ?: KeyboardEffectType.CYBER_CYAN.name
+        val effect = try {
+            KeyboardEffectType.valueOf(effectName)
+        } catch (_: Exception) {
+            KeyboardEffectType.CYBER_CYAN
+        }
+
+        val soundName = prefs.getString("sound_profile", KeyboardSoundProfile.DEFAULT_CLICK.name)
+            ?: KeyboardSoundProfile.DEFAULT_CLICK.name
+        val soundProfile = try {
+            KeyboardSoundProfile.valueOf(soundName)
+        } catch (_: Exception) {
+            KeyboardSoundProfile.DEFAULT_CLICK
+        }
+
         return KeyboardPreferences(
             themeType = theme,
+            activeEffect = effect,
             keyHapticFeedback = prefs.getBoolean("key_haptic", true),
             keySoundFeedback = prefs.getBoolean("key_sound", false),
+            soundProfile = soundProfile,
+            keySoundVolume = prefs.getFloat("key_sound_volume", 0.85f),
             keyBorderEnabled = prefs.getBoolean("key_border", true),
             keyCornerRadiusDp = prefs.getInt("key_corner_radius", 8),
             keyboardHeightPercent = prefs.getInt("keyboard_height", 100),
@@ -48,8 +67,13 @@ class KeyboardRepository(
     fun updatePreferences(newPrefs: KeyboardPreferences) {
         prefs.edit().apply {
             putString("theme_type", newPrefs.themeType.name)
+
+            putString("active_effect", newPrefs.activeEffect.name)
             putBoolean("key_haptic", newPrefs.keyHapticFeedback)
             putBoolean("key_sound", newPrefs.keySoundFeedback)
+            putString("active_effect", newPrefs.activeEffect.name)
+            putString("sound_profile", newPrefs.soundProfile.name)
+            putFloat("key_sound_volume", newPrefs.keySoundVolume)
             putBoolean("key_border", newPrefs.keyBorderEnabled)
             putInt("key_corner_radius", newPrefs.keyCornerRadiusDp)
             putInt("keyboard_height", newPrefs.keyboardHeightPercent)

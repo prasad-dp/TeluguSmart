@@ -1,4 +1,5 @@
 package com.example.ui.screens
+import androidx.compose.ui.draw.scale
 
 import android.content.Context
 import android.net.Uri
@@ -434,15 +435,6 @@ fun ThemePickerScreen(
                         val curatedEffects = listOf(
                             Pair(KeyboardEffectType.CYBER_CYAN, "💙 Desh Blue"),
                             Pair(KeyboardEffectType.NEON_GREEN, "💚 Desh Green"),
-                            Pair(KeyboardEffectType.PEARL_WHITE, "🤍 Desh White"),
-                            Pair(KeyboardEffectType.MORPH_LIGATURE, "⚡ <4ms Morph"),
-                            Pair(KeyboardEffectType.HAPTIC_3D_DEPTH, "🎯 <2ms 3D"),
-                            Pair(KeyboardEffectType.GLASS_BLOOM, "✨ <6ms Bloom"),
-                            Pair(KeyboardEffectType.SHADER_WAVE, "🌊 <8ms Wave"),
-                            Pair(KeyboardEffectType.MICRO_PARTICLES, "🎆 <8ms Particles"),
-                            Pair(KeyboardEffectType.AMBER_FIRE, "✨ Festive"),
-                            Pair(KeyboardEffectType.RAINBOW_WAVE, "🌈 Chroma"),
-                            Pair(KeyboardEffectType.SPARKLE_STARS, "⭐ Golden"),
                             Pair(KeyboardEffectType.NONE, "Clean")
                         )
                         items(curatedEffects) { (effectItem, effectBadge) ->
@@ -830,8 +822,30 @@ fun ThemePickerScreen(
 
                         Row(
                             verticalAlignment = Alignment.CenterVertically,
-                            horizontalArrangement = Arrangement.spacedBy(6.dp)
+                            horizontalArrangement = Arrangement.spacedBy(8.dp)
                         ) {
+                            Surface(
+                                shape = RoundedCornerShape(6.dp),
+                                color = if (preferences.keyBorderEnabled) BrandPrimary.copy(alpha = 0.15f) else Color.Transparent,
+                                border = androidx.compose.foundation.BorderStroke(
+                                    1.dp,
+                                    if (preferences.keyBorderEnabled) BrandPrimary else Color.Gray.copy(alpha = 0.4f)
+                                ),
+                                modifier = Modifier
+                                    .clip(RoundedCornerShape(6.dp))
+                                    .clickable {
+                                        onUpdatePreferences(preferences.copy(keyBorderEnabled = !preferences.keyBorderEnabled))
+                                    }
+                            ) {
+                                Text(
+                                    text = if (preferences.keyBorderEnabled) "Borders: ON" else "Borders: OFF",
+                                    fontSize = 11.sp,
+                                    fontWeight = FontWeight.SemiBold,
+                                    color = if (preferences.keyBorderEnabled) BrandPrimary else Color.Gray,
+                                    modifier = Modifier.padding(horizontal = 8.dp, vertical = 3.dp)
+                                )
+                            }
+
                             Text(
                                 text = "Hide ✕",
                                 fontSize = 12.sp,
@@ -1166,6 +1180,30 @@ fun ThemePickerScreen(
                     )
                 )
 
+                Spacer(modifier = Modifier.height(6.dp))
+
+                // Key Borders Toggle in Customizer
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Text(
+                        text = "Show Key Borders (కీల సరిహద్దులు):",
+                        fontSize = 12.sp,
+                        color = MaterialTheme.colorScheme.onSurface
+                    )
+                    Switch(
+                        checked = showKeyBorders,
+                        onCheckedChange = { showKeyBorders = it },
+                        colors = SwitchDefaults.colors(
+                            checkedTrackColor = BrandPrimary,
+                            checkedThumbColor = Color.White
+                        ),
+                        modifier = Modifier.scale(0.72f)
+                    )
+                }
+
                 Spacer(modifier = Modifier.height(12.dp))
 
                 // Apply Theme Button
@@ -1176,7 +1214,8 @@ fun ThemePickerScreen(
                                 customPhotoUri = editingPhotoUri,
                                 customPhotoPreset = if (editingPhotoUri == null) (editingPresetId ?: "tirupati_gold") else null,
                                 customPhotoDarkness = editingDarkness,
-                                keyOpacity = editingKeyOpacity
+                                keyOpacity = editingKeyOpacity,
+                                keyBorderEnabled = showKeyBorders
                             )
                         )
                         showCustomThemeSheet = false

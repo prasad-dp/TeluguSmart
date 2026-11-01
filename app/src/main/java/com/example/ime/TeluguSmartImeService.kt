@@ -45,36 +45,46 @@ class TeluguSmartImeService : InputMethodService(), LifecycleOwner, SavedStateRe
         savedStateRegistryController.performRestore(null)
         lifecycleRegistry.handleLifecycleEvent(Lifecycle.Event.ON_CREATE)
 
-        // Clipboard listener
-        val clipboard = getSystemService(Context.CLIPBOARD_SERVICE) as? ClipboardManager
-        clipboard?.addPrimaryClipChangedListener {
-            val clip = clipboard.primaryClip
-            if (clip != null && clip.itemCount > 0) {
-                val text = clip.getItemAt(0).text?.toString()
-                if (!text.isNullOrBlank()) {
-                    val app = application as? TeluguSmartApplication
-                    app?.repository?.let { repo ->
-                        serviceScope.launch {
-                            repo.addClipboardText(text)
+        // Clipboard listener protected against Android 10+ SecurityException
+        try {
+            val clipboard = getSystemService(Context.CLIPBOARD_SERVICE) as? ClipboardManager
+            clipboard?.addPrimaryClipChangedListener {
+                try {
+                    val clip = clipboard.primaryClip
+                    if (clip != null && clip.itemCount > 0) {
+                        val text = clip.getItemAt(0).text?.toString()
+                        if (!text.isNullOrBlank()) {
+                            val app = application as? TeluguSmartApplication
+                            app?.repository?.let { repo ->
+                                serviceScope.launch {
+                                    repo.addClipboardText(text)
+                                }
+                            }
                         }
                     }
+                } catch (_: Throwable) {
+                    // Ignore clipboard read errors when not in focus
                 }
             }
-        }
+        } catch (_: Throwable) {}
     }
 
     override fun onCreateInputView(): View {
-        lifecycleRegistry.handleLifecycleEvent(Lifecycle.Event.ON_START)
-        lifecycleRegistry.handleLifecycleEvent(Lifecycle.Event.ON_RESUME)
+        if (!lifecycleRegistry.currentState.isAtLeast(Lifecycle.State.STARTED)) {
+            lifecycleRegistry.handleLifecycleEvent(Lifecycle.Event.ON_START)
+        }
+        if (!lifecycleRegistry.currentState.isAtLeast(Lifecycle.State.RESUMED)) {
+            lifecycleRegistry.handleLifecycleEvent(Lifecycle.Event.ON_RESUME)
+        }
 
         val composeView = ComposeView(this).apply {
             setViewTreeLifecycleOwner(this@TeluguSmartImeService)
             setViewTreeSavedStateRegistryOwner(this@TeluguSmartImeService)
             setViewTreeViewModelStoreOwner(this@TeluguSmartImeService)
-            setViewCompositionStrategy(ViewCompositionStrategy.DisposeOnViewTreeLifecycleDestroyed)
+            setViewCompositionStrategy(ViewCompositionStrategy.DisposeOnLifecycleDestroyed(this@TeluguSmartImeService))
 
             setContent {
-                val app = application as TeluguSmartApplication
+                val app = application as? TeluguSmartApplication ?: return@setContent
                 val prefs by app.repository.preferences.collectAsState()
                 val snippets by app.repository.clipboardSnippets.collectAsState(initial = emptyList())
 
@@ -103,19 +113,21 @@ class TeluguSmartImeService : InputMethodService(), LifecycleOwner, SavedStateRe
                         }
                     },
                     onLearnUserWord = { telugu, phonetic ->
-                        val attribute = currentInputEditorInfo
-                        val isNoLearning = attribute != null && (attribute.imeOptions and EditorInfo.IME_FLAG_NO_PERSONALIZED_LEARNING != 0)
-                        val inputType = attribute?.inputType ?: 0
-                        val isPassword = (inputType and InputType.TYPE_MASK_VARIATION) == InputType.TYPE_TEXT_VARIATION_PASSWORD ||
-                                         (inputType and InputType.TYPE_MASK_VARIATION) == InputType.TYPE_TEXT_VARIATION_WEB_PASSWORD ||
-                                         (inputType and InputType.TYPE_MASK_VARIATION) == InputType.TYPE_TEXT_VARIATION_VISIBLE_PASSWORD ||
-                                         (inputType and InputType.TYPE_MASK_CLASS) == InputType.TYPE_CLASS_NUMBER && (inputType and InputType.TYPE_NUMBER_VARIATION_PASSWORD) != 0
+                        try {
+                            val attribute = currentInputEditorInfo
+                            val isNoLearning = attribute != null && (attribute.imeOptions and EditorInfo.IME_FLAG_NO_PERSONALIZED_LEARNING != 0)
+                            val inputType = attribute?.inputType ?: 0
+                            val isPassword = (inputType and InputType.TYPE_MASK_VARIATION) == InputType.TYPE_TEXT_VARIATION_PASSWORD ||
+                                             (inputType and InputType.TYPE_MASK_VARIATION) == InputType.TYPE_TEXT_VARIATION_WEB_PASSWORD ||
+                                             (inputType and InputType.TYPE_MASK_VARIATION) == InputType.TYPE_TEXT_VARIATION_VISIBLE_PASSWORD ||
+                                             (inputType and InputType.TYPE_MASK_CLASS) == InputType.TYPE_CLASS_NUMBER && (inputType and InputType.TYPE_NUMBER_VARIATION_PASSWORD) != 0
 
-                        if (!isNoLearning && !isPassword) {
-                            serviceScope.launch {
-                                app.repository.insertOrUpdateWord(telugu, phonetic)
+                            if (!isNoLearning && !isPassword) {
+                                serviceScope.launch {
+                                    app.repository.insertOrUpdateWord(telugu, phonetic)
+                                }
                             }
-                        }
+                        } catch (_: Throwable) {}
                     }
                 )
             }
@@ -123,16 +135,42 @@ class TeluguSmartImeService : InputMethodService(), LifecycleOwner, SavedStateRe
         return composeView
     }
 
+    override fun onStartInputView(info: EditorInfo?, restarting: Boolean) {
+        super.onStartInputView(info, restarting)
+        if (!lifecycleRegistry.currentState.isAtLeast(Lifecycle.State.STARTED)) {
+            lifecycleRegistry.handleLifecycleEvent(Lifecycle.Event.ON_START)
+        }
+        if (!lifecycleRegistry.currentState.isAtLeast(Lifecycle.State.RESUMED)) {
+            lifecycleRegistry.handleLifecycleEvent(Lifecycle.Event.ON_RESUME)
+        }
+    }
+
+    override fun onWindowShown() {
+        super.onWindowShown()
+        if (!lifecycleRegistry.currentState.isAtLeast(Lifecycle.State.STARTED)) {
+            lifecycleRegistry.handleLifecycleEvent(Lifecycle.Event.ON_START)
+        }
+        if (!lifecycleRegistry.currentState.isAtLeast(Lifecycle.State.RESUMED)) {
+            lifecycleRegistry.handleLifecycleEvent(Lifecycle.Event.ON_RESUME)
+        }
+    }
+
     override fun onFinishInputView(finishingInput: Boolean) {
         super.onFinishInputView(finishingInput)
-        lifecycleRegistry.handleLifecycleEvent(Lifecycle.Event.ON_PAUSE)
-        lifecycleRegistry.handleLifecycleEvent(Lifecycle.Event.ON_STOP)
+        if (lifecycleRegistry.currentState.isAtLeast(Lifecycle.State.RESUMED)) {
+            lifecycleRegistry.handleLifecycleEvent(Lifecycle.Event.ON_PAUSE)
+        }
+        if (lifecycleRegistry.currentState.isAtLeast(Lifecycle.State.STARTED)) {
+            lifecycleRegistry.handleLifecycleEvent(Lifecycle.Event.ON_STOP)
+        }
     }
 
     override fun onWindowHidden() {
         super.onWindowHidden()
-        if (lifecycleRegistry.currentState.isAtLeast(Lifecycle.State.STARTED)) {
+        if (lifecycleRegistry.currentState.isAtLeast(Lifecycle.State.RESUMED)) {
             lifecycleRegistry.handleLifecycleEvent(Lifecycle.Event.ON_PAUSE)
+        }
+        if (lifecycleRegistry.currentState.isAtLeast(Lifecycle.State.STARTED)) {
             lifecycleRegistry.handleLifecycleEvent(Lifecycle.Event.ON_STOP)
         }
     }

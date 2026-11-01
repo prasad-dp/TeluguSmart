@@ -26,6 +26,7 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.interaction.MutableInteractionSource
+import androidx.compose.foundation.interaction.collectIsPressedAsState
 import androidx.compose.foundation.interaction.PressInteraction
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -80,7 +81,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.scale
 import androidx.compose.ui.draw.shadow
-import androidx.compose.ui.focus.FocusRequester
+import androidx.compose.ui.focus.onFocusChanged
 import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Brush
@@ -132,7 +133,6 @@ fun HomeScreen(
 ) {
     val context = LocalContext.current
     val coroutineScope = rememberCoroutineScope()
-    val focusRequester = remember { FocusRequester() }
 
     val app = context.applicationContext as? TeluguSmartApplication
     val snippets by (app?.repository?.clipboardSnippets?.collectAsState(initial = emptyList())
@@ -726,7 +726,15 @@ fun HomeScreen(
 
                         Spacer(modifier = Modifier.height(8.dp))
 
-                        // Input Field
+                        // Input Field with Instant Touch Detection for Sandbox
+                        val sandboxInteractionSource = remember { MutableInteractionSource() }
+                        val isSandboxPressed by sandboxInteractionSource.collectIsPressedAsState()
+                        if (isSandboxPressed) {
+                            LaunchedEffect(isSandboxPressed) {
+                                isKeyboardVisible = true
+                            }
+                        }
+
                         OutlinedTextField(
                             value = sandboxInput,
                             onValueChange = { input ->
@@ -738,9 +746,17 @@ fun HomeScreen(
                             },
                             shape = RoundedCornerShape(10.dp),
                             singleLine = true,
+                            interactionSource = sandboxInteractionSource,
                             modifier = Modifier
                                 .fillMaxWidth()
-                                .focusRequester(focusRequester)
+                                .onFocusChanged { focusState ->
+                                    if (focusState.isFocused) {
+                                        isKeyboardVisible = true
+                                    }
+                                }
+                                .clickable {
+                                    isKeyboardVisible = true
+                                }
                                 .testTag("home_sandbox_textfield"),
                             colors = OutlinedTextFieldDefaults.colors(
                                 focusedBorderColor = BrandPrimary,

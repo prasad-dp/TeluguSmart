@@ -2,23 +2,23 @@ package com.example.engine
 
 import android.content.Context
 import android.media.AudioAttributes
+import android.media.AudioFormat
 import android.media.AudioManager
 import android.media.AudioTrack
-import android.media.ToneGenerator
 import android.os.Build
-import android.os.CombinedVibration
 import android.os.VibrationEffect
 import android.os.Vibrator
 import android.os.VibratorManager
 import com.example.data.HapticStrength
 import com.example.data.KeyboardSoundProfile
+import kotlin.math.PI
+import kotlin.math.exp
 import kotlin.math.sin
 
 /**
  * High performance, zero-latency audio and haptic synthesis engine.
- * Generates custom synthesized waveforms for Mechanical Switch (thock),
- * Typewriter, Water Drop Bubble Pop, and Cyber Digital Blip without requiring
- * external mp3 asset files.
+ * Uses pre-allocated static AudioTrack pools to eliminate allocation overhead,
+ * audio track leaks, and track exhaustion while providing rich audible volume.
  */
 object SoundFeedbackHelper {
 
@@ -26,8 +26,9 @@ object SoundFeedbackHelper {
     private var vibrator: Vibrator? = null
     private var isInitialized = false
 
-    // Tone generators for quick synthesized beeps
-    private var toneGen: ToneGenerator? = null
+    private const val SAMPLE_RATE = 24000
+    private val profileTracks = mutableMapOf<KeyboardSoundProfile, Array<AudioTrack>>()
+    private val trackRoundRobin = mutableMapOf<KeyboardSoundProfile, Int>()
 
     fun initialize(context: Context) {
         if (isInitialized) return
@@ -40,42 +41,175 @@ object SoundFeedbackHelper {
                 @Suppress("DEPRECATION")
                 context.getSystemService(Context.VIBRATOR_SERVICE) as? Vibrator
             }
-            try {
-                toneGen = ToneGenerator(AudioManager.STREAM_SYSTEM, 50)
-            } catch (_: Throwable) {}
+
+            // Pre-initialize static AudioTracks for all sound profiles
+            initAudioTracks()
+
             isInitialized = true
-        } catch (_: Exception) {}
+        } catch (_: Throwable) {}
+    }
+
+    private fun initAudioTracks() {
+        try {
+            KeyboardSoundProfile.entries.forEach { profile ->
+                val buffer = generateProfileBuffer(profile)
+                if (buffer.isNotEmpty()) {
+                    val tracks = mutableListOf<AudioTrack>()
+                    for (i in 0 until 2) {
+                        try {
+                            val track = createStaticTrack(buffer)
+                            tracks.add(track)
+                        } catch (_: Throwable) {}
+                    }
+                    if (tracks.isNotEmpty()) {
+                        profileTracks[profile] = tracks.toTypedArray()
+                        trackRoundRobin[profile] = 0
+                    }
+                }
+            }
+        } catch (_: Throwable) {}
+    }
+
+    private fun createStaticTrack(buffer: ShortArray): AudioTrack {
+        val audioTrack = AudioTrack.Builder()
+            .setAudioAttributes(
+                AudioAttributes.Builder()
+                    .setUsage(AudioAttributes.USAGE_ASSISTANCE_SONIFICATION)
+                    .setContentType(AudioAttributes.CONTENT_TYPE_SONIFICATION)
+                    .setFlags(AudioAttributes.FLAG_AUDIBILITY_ENFORCED)
+                    .build()
+            )
+            .setAudioFormat(
+                AudioFormat.Builder()
+                    .setSampleRate(SAMPLE_RATE)
+                    .setChannelMask(AudioFormat.CHANNEL_OUT_MONO)
+                    .setEncoding(AudioFormat.ENCODING_PCM_16BIT)
+                    .build()
+            )
+            .setBufferSizeInBytes(buffer.size * 2)
+            .setTransferMode(AudioTrack.MODE_STATIC)
+            .build()
+
+        audioTrack.write(buffer, 0, buffer.size)
+        return audioTrack
     }
 
     /**
-     * Play realistic audio click or synthesized sound effect based on chosen profile.
+     * Synthesizes punchy, crisp, rich sound waveforms for each profile.
      */
-    fun playKeySound(profile: KeyboardSoundProfile) {
+    private fun generateProfileBuffer(profile: KeyboardSoundProfile): ShortArray {
+        return when (profile) {
+            KeyboardSoundProfile.DEFAULT_CLICK -> {
+                // Crisp click transient (1200Hz to 600Hz snap, 22ms)
+                val durationMs = 22
+                val numSamples = (SAMPLE_RATE * (durationMs / 1000.0)).toInt()
+                val buffer = ShortArray(numSamples)
+                for (i in 0 until numSamples) {
+                    val progress = i.toDouble() / numSamples
+                    val freq = 1200.0 - 600.0 * progress
+                    val time = i.toDouble() / SAMPLE_RATE
+                    val env = exp(-7.0 * progress)
+                    val s = sin(2.0 * PI * freq * time) * Short.MAX_VALUE * 0.95 * env
+                    buffer[i] = s.toInt().coerceIn(Short.MIN_VALUE.toInt(), Short.MAX_VALUE.toInt()).toShort()
+                }
+                buffer
+            }
+            KeyboardSoundProfile.MECHANICAL_THOCK -> {
+                // Deep acoustic tactile switch thock (110Hz body + 360Hz click transient, 36ms)
+                val durationMs = 36
+                val numSamples = (SAMPLE_RATE * (durationMs / 1000.0)).toInt()
+                val buffer = ShortArray(numSamples)
+                for (i in 0 until numSamples) {
+                    val progress = i.toDouble() / numSamples
+                    val time = i.toDouble() / SAMPLE_RATE
+                    val clickEnv = exp(-18.0 * progress)
+                    val click = sin(2.0 * PI * 360.0 * time) * clickEnv * 0.5
+                    val bodyEnv = exp(-5.0 * progress)
+                    val body = (sin(2.0 * PI * 115.0 * time) * 0.8 + sin(2.0 * PI * 230.0 * time) * 0.4) * bodyEnv
+                    val s = (click + body) * Short.MAX_VALUE * 0.95
+                    buffer[i] = s.toInt().coerceIn(Short.MIN_VALUE.toInt(), Short.MAX_VALUE.toInt()).toShort()
+                }
+                buffer
+            }
+            KeyboardSoundProfile.TYPEWRITER -> {
+                // Metallic typewriter striker clack (1800Hz transient + 750Hz metallic ring, 28ms)
+                val durationMs = 28
+                val numSamples = (SAMPLE_RATE * (durationMs / 1000.0)).toInt()
+                val buffer = ShortArray(numSamples)
+                for (i in 0 until numSamples) {
+                    val progress = i.toDouble() / numSamples
+                    val time = i.toDouble() / SAMPLE_RATE
+                    val strike = sin(2.0 * PI * 1800.0 * time) * exp(-20.0 * progress) * 0.6
+                    val clatter = sin(2.0 * PI * 750.0 * time) * exp(-6.5 * progress) * 0.7
+                    val s = (strike + clatter) * Short.MAX_VALUE * 0.95
+                    buffer[i] = s.toInt().coerceIn(Short.MIN_VALUE.toInt(), Short.MAX_VALUE.toInt()).toShort()
+                }
+                buffer
+            }
+            KeyboardSoundProfile.WATER_DROP -> {
+                // Resonant bubble pop chirp (450Hz -> 1050Hz, 38ms)
+                val durationMs = 38
+                val numSamples = (SAMPLE_RATE * (durationMs / 1000.0)).toInt()
+                val buffer = ShortArray(numSamples)
+                for (i in 0 until numSamples) {
+                    val progress = i.toDouble() / numSamples
+                    val freq = 450.0 + 600.0 * progress
+                    val time = i.toDouble() / SAMPLE_RATE
+                    val env = sin(PI * progress)
+                    val s = sin(2.0 * PI * freq * time) * Short.MAX_VALUE * 0.95 * env
+                    buffer[i] = s.toInt().coerceIn(Short.MIN_VALUE.toInt(), Short.MAX_VALUE.toInt()).toShort()
+                }
+                buffer
+            }
+            KeyboardSoundProfile.DIGITAL_BEEP -> {
+                // Futuristic cyber pulse blip (1350Hz, 20ms)
+                val durationMs = 20
+                val numSamples = (SAMPLE_RATE * (durationMs / 1000.0)).toInt()
+                val buffer = ShortArray(numSamples)
+                for (i in 0 until numSamples) {
+                    val progress = i.toDouble() / numSamples
+                    val time = i.toDouble() / SAMPLE_RATE
+                    val env = exp(-8.0 * progress)
+                    val s = (sin(2.0 * PI * 1350.0 * time) * 0.8 + sin(2.0 * PI * 2700.0 * time) * 0.2) * Short.MAX_VALUE * 0.95 * env
+                    buffer[i] = s.toInt().coerceIn(Short.MIN_VALUE.toInt(), Short.MAX_VALUE.toInt()).toShort()
+                }
+                buffer
+            }
+        }
+    }
+
+    /**
+     * Play key sound using pre-allocated static AudioTracks with volume control.
+     */
+    fun playKeySound(profile: KeyboardSoundProfile, volumeFraction: Float = 0.85f) {
+        val safeVolume = volumeFraction.coerceIn(0.05f, 1.0f)
+
         try {
-            when (profile) {
-                KeyboardSoundProfile.DEFAULT_CLICK -> {
-                    audioManager?.playSoundEffect(AudioManager.FX_KEYPRESS_STANDARD, 1.0f)
-                }
-                KeyboardSoundProfile.MECHANICAL_THOCK -> {
-                    // Deep tactile thock (low frequency short sine pulse)
-                    playSynthesizedPulse(frequency = 120.0, durationMs = 28, volume = 0.85f)
-                }
-                KeyboardSoundProfile.TYPEWRITER -> {
-                    // Vintage typewriter sharp click
-                    playSynthesizedPulse(frequency = 850.0, durationMs = 18, volume = 0.6f)
-                }
-                KeyboardSoundProfile.WATER_DROP -> {
-                    // Ascending bubble droplet sound
-                    playSynthesizedChirp(startFreq = 420.0, endFreq = 950.0, durationMs = 35, volume = 0.7f)
-                }
-                KeyboardSoundProfile.DIGITAL_BEEP -> {
-                    playSynthesizedPulse(frequency = 1400.0, durationMs = 15, volume = 0.4f)
+            val tracks = profileTracks[profile]
+            if (tracks != null && tracks.isNotEmpty()) {
+                val idx = (trackRoundRobin[profile] ?: 0) % tracks.size
+                trackRoundRobin[profile] = idx + 1
+                val track = tracks[idx]
+
+                if (track.state == AudioTrack.STATE_INITIALIZED) {
+                    track.stop()
+                    track.reloadStaticData()
+                    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.LOLLIPOP) {
+                        track.setVolume(safeVolume)
+                    } else {
+                        @Suppress("DEPRECATION")
+                        track.setStereoVolume(safeVolume, safeVolume)
+                    }
+                    track.play()
+                    return
                 }
             }
-        } catch (_: Exception) {
-            // Fallback
-            audioManager?.playSoundEffect(AudioManager.FX_KEY_CLICK, 0.8f)
-        }
+        } catch (_: Throwable) {}
+
+        // Fallback to system sound effect
+        try {
+            audioManager?.playSoundEffect(AudioManager.FX_KEYPRESS_STANDARD, safeVolume)
+        } catch (_: Throwable) {}
     }
 
     /**
@@ -97,99 +231,6 @@ object SoundFeedbackHelper {
                 @Suppress("DEPRECATION")
                 vib.vibrate(strength.durationMs)
             }
-        } catch (_: Exception) {}
-    }
-
-    /**
-     * Generates a fast zero-allocation micro sound pulse in memory.
-     */
-    private fun playSynthesizedPulse(frequency: Double, durationMs: Int, volume: Float) {
-        try {
-            val sampleRate = 22050
-            val numSamples = (sampleRate * (durationMs / 1000.0)).toInt().coerceAtLeast(100)
-            val buffer = ShortArray(numSamples)
-
-            for (i in 0 until numSamples) {
-                val time = i.toDouble() / sampleRate
-                // Exponential decay envelope for snappy physical impact sound
-                val envelope = Math.exp(-12.0 * (i.toDouble() / numSamples))
-                val sample = (sin(2.0 * Math.PI * frequency * time) * Short.MAX_VALUE * volume * envelope).toInt()
-                buffer[i] = sample.coerceIn(Short.MIN_VALUE.toInt(), Short.MAX_VALUE.toInt()).toShort()
-            }
-
-            val audioTrack = AudioTrack.Builder()
-                .setAudioAttributes(
-                    AudioAttributes.Builder()
-                        .setUsage(AudioAttributes.USAGE_ASSISTANCE_SONIFICATION)
-                        .setContentType(AudioAttributes.CONTENT_TYPE_SONIFICATION)
-                        .build()
-                )
-                .setAudioFormat(
-                    android.media.AudioFormat.Builder()
-                        .setSampleRate(sampleRate)
-                        .setChannelMask(android.media.AudioFormat.CHANNEL_OUT_MONO)
-                        .setEncoding(android.media.AudioFormat.ENCODING_PCM_16BIT)
-                        .build()
-                )
-                .setBufferSizeInBytes(buffer.size * 2)
-                .setTransferMode(AudioTrack.MODE_STATIC)
-                .build()
-
-            audioTrack.write(buffer, 0, buffer.size)
-            audioTrack.play()
-            // Auto release after sound finishes
-            android.os.Handler(android.os.Looper.getMainLooper()).postDelayed({
-                try {
-                    audioTrack.stop()
-                    audioTrack.release()
-                } catch (_: Exception) {}
-            }, durationMs.toLong() + 50L)
-        } catch (_: Exception) {
-            audioManager?.playSoundEffect(AudioManager.FX_KEYPRESS_STANDARD, volume)
-        }
-    }
-
-    private fun playSynthesizedChirp(startFreq: Double, endFreq: Double, durationMs: Int, volume: Float) {
-        try {
-            val sampleRate = 22050
-            val numSamples = (sampleRate * (durationMs / 1000.0)).toInt().coerceAtLeast(100)
-            val buffer = ShortArray(numSamples)
-
-            for (i in 0 until numSamples) {
-                val progress = i.toDouble() / numSamples
-                val currentFreq = startFreq + (endFreq - startFreq) * progress
-                val time = i.toDouble() / sampleRate
-                val envelope = Math.sin(Math.PI * progress) // bell curve
-                val sample = (sin(2.0 * Math.PI * currentFreq * time) * Short.MAX_VALUE * volume * envelope).toInt()
-                buffer[i] = sample.coerceIn(Short.MIN_VALUE.toInt(), Short.MAX_VALUE.toInt()).toShort()
-            }
-
-            val audioTrack = AudioTrack.Builder()
-                .setAudioAttributes(
-                    AudioAttributes.Builder()
-                        .setUsage(AudioAttributes.USAGE_ASSISTANCE_SONIFICATION)
-                        .setContentType(AudioAttributes.CONTENT_TYPE_SONIFICATION)
-                        .build()
-                )
-                .setAudioFormat(
-                    android.media.AudioFormat.Builder()
-                        .setSampleRate(sampleRate)
-                        .setChannelMask(android.media.AudioFormat.CHANNEL_OUT_MONO)
-                        .setEncoding(android.media.AudioFormat.ENCODING_PCM_16BIT)
-                        .build()
-                )
-                .setBufferSizeInBytes(buffer.size * 2)
-                .setTransferMode(AudioTrack.MODE_STATIC)
-                .build()
-
-            audioTrack.write(buffer, 0, buffer.size)
-            audioTrack.play()
-            android.os.Handler(android.os.Looper.getMainLooper()).postDelayed({
-                try {
-                    audioTrack.stop()
-                    audioTrack.release()
-                } catch (_: Exception) {}
-            }, durationMs.toLong() + 50L)
         } catch (_: Exception) {}
     }
 }

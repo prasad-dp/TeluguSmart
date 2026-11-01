@@ -142,7 +142,7 @@ fun KeyComponent(
                     }
                     if (preferences.keySoundFeedback) {
                         try {
-                            SoundFeedbackHelper.playKeySound(preferences.soundProfile)
+                            SoundFeedbackHelper.playKeySound(preferences.soundProfile, preferences.keySoundVolume)
                         } catch (_: Exception) {}
                     }
                     onClick()
@@ -159,7 +159,7 @@ fun KeyComponent(
                         }
                         if (preferences.keySoundFeedback) {
                             try {
-                                SoundFeedbackHelper.playKeySound(preferences.soundProfile)
+                                SoundFeedbackHelper.playKeySound(preferences.soundProfile, preferences.keySoundVolume)
                             } catch (_: Exception) {}
                         }
                         it()

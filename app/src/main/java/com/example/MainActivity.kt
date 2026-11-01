@@ -1,6 +1,7 @@
 package com.example
 
 import android.content.Context
+import android.content.Intent
 import android.os.Bundle
 import android.provider.Settings
 import android.view.inputmethod.InputMethodManager
@@ -25,7 +26,6 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.DarkMode
 import androidx.compose.material.icons.filled.GridView
-import androidx.compose.material.icons.filled.HelpOutline
 import androidx.compose.material.icons.filled.LightMode
 import androidx.compose.material.icons.filled.MoreVert
 import androidx.compose.material.icons.filled.Palette
@@ -195,17 +195,6 @@ class MainActivity : ComponentActivity() {
                                         )
                                     }
 
-                                    IconButton(
-                                        onClick = { showSetupWizard = true },
-                                        modifier = Modifier.testTag("top_bar_help_btn")
-                                    ) {
-                                        Icon(
-                                            imageVector = Icons.Default.HelpOutline,
-                                            contentDescription = "Setup Guide",
-                                            tint = MaterialTheme.colorScheme.onSurface
-                                        )
-                                    }
-
                                     Box {
                                         IconButton(onClick = { showMenu = true }) {
                                             Icon(
@@ -230,6 +219,20 @@ class MainActivity : ComponentActivity() {
                                                 text = { Text("Share Keyboard") },
                                                 onClick = {
                                                     showMenu = false
+                                                    try {
+                                                        val sendIntent = Intent(Intent.ACTION_SEND).apply {
+                                                            type = "text/plain"
+                                                            putExtra(
+                                                                Intent.EXTRA_TEXT,
+                                                                "Experience fast, beautiful, and secure Telugu typing with TeluguSmart Keyboard! \uD83D\uDE80 Download: https://play.google.com/store/apps/details?id=com.telugusmart.keyboard"
+                                                            )
+                                                            putExtra(Intent.EXTRA_SUBJECT, "TeluguSmart Keyboard")
+                                                        }
+                                                        val shareIntent = Intent.createChooser(sendIntent, "Share TeluguSmart Keyboard via")
+                                                        startActivity(shareIntent)
+                                                    } catch (e: Exception) {
+                                                        e.printStackTrace()
+                                                    }
                                                 }
                                             )
                                         }

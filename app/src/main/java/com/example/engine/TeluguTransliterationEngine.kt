@@ -9,8 +9,10 @@ import android.util.LruCache
  */
 object TeluguTransliterationEngine {
 
-    // High performance LRU Cache for phonetic translations (capacity: 256 entries)
-    private val TRANSLITERATION_LRU_CACHE = LruCache<String, Triple<String, String, String>>(256)
+    // High performance LRU Cache for phonetic translations (capacity: 512 entries)
+    private val TRANSLITERATION_LRU_CACHE = LruCache<String, Triple<String, String, String>>(512)
+    // High performance LRU Cache for raw phonetic conversions (capacity: 512 entries)
+    private val PHONETIC_LRU_CACHE = LruCache<String, String>(512)
 
     // Preloaded high-frequency Tenglish-to-Telugu dictionary
     private val DICTIONARY = mapOf(
@@ -404,10 +406,42 @@ object TeluguTransliterationEngine {
 
     /**
      * Converts an English phonetic string to Telugu script.
+     * Uses LRU cache & dictionary for zero-latency resolution.
      */
     fun convertPhonetic(rawInput: String): String {
         val input = rawInput.trim()
         if (input.isEmpty()) return ""
+
+        val cached = PHONETIC_LRU_CACHE.get(input)
+        if (cached != null) return cached
+
+        val lower = input.lowercase()
+        if (DICTIONARY.containsKey(lower)) {
+            val result = DICTIONARY.getValue(lower)
+            PHONETIC_LRU_CACHE.put(input, result)
+            return result
+        }
+
+        // Multi-word phrase support
+        if (input.contains(" ")) {
+            val words = input.split(Regex("\\s+"))
+            val converted = words.joinToString(" ") { word ->
+                if (word.isEmpty()) "" else convertSingleWordPhonetic(word)
+            }
+            PHONETIC_LRU_CACHE.put(input, converted)
+            return converted
+        }
+
+        val result = convertSingleWordPhonetic(input)
+        PHONETIC_LRU_CACHE.put(input, result)
+        return result
+    }
+
+    private fun convertSingleWordPhonetic(input: String): String {
+        val lower = input.lowercase()
+        if (DICTIONARY.containsKey(lower)) {
+            return DICTIONARY.getValue(lower)
+        }
 
         val sb = StringBuilder()
         var i = 0

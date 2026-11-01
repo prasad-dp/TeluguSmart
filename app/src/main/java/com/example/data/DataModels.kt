@@ -52,20 +52,8 @@ enum class KeyboardEffectType(
     val description: String
 ) {
     NONE("none", "None", "Clean classic key tap"),
-    MORPH_LIGATURE("morph_ligature", "Morph & Ligature", "Telugu stroke reveal & glyph expansion (<4ms)"),
-    HAPTIC_3D_DEPTH("haptic_3d", "Haptic-Sync 3D", "3D perspective depth tilt & tactile reflection (<2ms)"),
-    GLASS_BLOOM("glass_bloom", "Glassmorphic Bloom", "Frosted glass halo burst & specular specular bloom (<6ms)"),
-    SHADER_WAVE("shader_wave", "Reactive Shader Wave", "Sine-wave shockwave sweep across key matrix (<8ms)"),
-    MICRO_PARTICLES("micro_particles", "Micro-Particle Emitter", "Zero-allocation physics particle explosion (<8ms)"),
     CYBER_CYAN("cyber_cyan", "Cyan Aurora (Electric Blue)", "Desh-style electric cyan blue key highlight pulse (<4ms)"),
-    NEON_GREEN("neon_green", "Emerald Neon Pulse", "Desh-style electric neon green border pulse (<4ms)"),
-    PEARL_WHITE("pearl_white", "Pearl White Pulse", "Desh-style crisp pearl white key highlight flash (<4ms)"),
-    AMBER_FIRE("amber_fire", "Amber Glow", "Warm golden ember glow with flame sparks"),
-    MAGENTA_BURST("magenta_burst", "Magenta Glow", "Vibrant cyber pink & magenta energy pulse"),
-    RAINBOW_WAVE("rainbow_wave", "RGB Chroma", "Dynamic full-spectrum chromatic wave burst"),
-    SPARKLE_STARS("sparkle_stars", "Sparkle Stars", "Golden celestial twinkling star particles"),
-    WATER_RIPPLE("water_ripple", "Water Ripple", "Fluid liquid droplet concentric ripples"),
-    HEART_POP("heart_pop", "Floating Hearts", "Romantic floating mini heart particles")
+    NEON_GREEN("neon_green", "Emerald Neon Pulse", "Desh-style electric neon green border pulse (<4ms)")
 }
 
 enum class KeyboardSoundProfile(
@@ -106,6 +94,7 @@ data class KeyboardPreferences(
     val hapticStrength: HapticStrength = HapticStrength.MEDIUM,
     val keySoundFeedback: Boolean = false,
     val soundProfile: KeyboardSoundProfile = KeyboardSoundProfile.DEFAULT_CLICK,
+    val keySoundVolume: Float = 0.85f,
     val keyBorderEnabled: Boolean = true,
     val keyCornerRadiusDp: Int = 8,
     val keyboardHeightPercent: Int = 100, // 80% to 120%

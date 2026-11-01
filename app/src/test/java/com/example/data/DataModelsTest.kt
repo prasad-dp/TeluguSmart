@@ -59,6 +59,8 @@ class DataModelsTest {
         assertEquals(KeyboardThemeType.MIDNIGHT_SLATE, prefs.themeType)
         assertTrue(prefs.keyHapticFeedback)
         assertFalse(prefs.keySoundFeedback)
+        assertEquals(0.85f, prefs.keySoundVolume, 0.01f)
+        assertEquals(KeyboardSoundProfile.DEFAULT_CLICK, prefs.soundProfile)
         assertEquals(100, prefs.keyboardHeightPercent)
         assertTrue(prefs.showNumberRow)
         assertTrue(prefs.autoTransliterateOnSpace)
