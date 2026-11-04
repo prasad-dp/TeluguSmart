@@ -6,6 +6,8 @@ import android.os.Bundle
 import android.speech.RecognitionListener
 import android.speech.RecognizerIntent
 import android.speech.SpeechRecognizer
+import android.view.KeyEvent
+import android.view.inputmethod.EditorInfo
 import android.view.inputmethod.InputConnection
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.fadeIn
@@ -57,6 +59,7 @@ fun KeyboardRootView(
     modifier: Modifier = Modifier,
     preferences: KeyboardPreferences,
     inputConnection: InputConnection? = null,
+    editorInfo: EditorInfo? = null,
     // For embedded sandbox testpad
     currentBufferText: String = "",
     onBufferTextChange: ((String) -> Unit)? = null,
@@ -158,6 +161,25 @@ fun KeyboardRootView(
                 }
                 inputConnection.sendKeyEvent(keyEvent)
             } catch (_: Exception) {}
+        }
+    }
+
+    val handleEnterPress: () -> Unit = {
+        triggerKeyEffect()
+        if (activeComposingToken.isNotEmpty()) {
+            commitTextInternal(teluguSug.ifEmpty { activeComposingToken })
+            activeComposingToken = ""
+        }
+        if (inputConnection != null) {
+            val action = editorInfo?.imeOptions?.and(EditorInfo.IME_MASK_ACTION) ?: EditorInfo.IME_ACTION_NONE
+            if (action != EditorInfo.IME_ACTION_NONE && action != EditorInfo.IME_ACTION_UNSPECIFIED) {
+                inputConnection.performEditorAction(action)
+            } else {
+                inputConnection.sendKeyEvent(KeyEvent(KeyEvent.ACTION_DOWN, KeyEvent.KEYCODE_ENTER))
+                inputConnection.sendKeyEvent(KeyEvent(KeyEvent.ACTION_UP, KeyEvent.KEYCODE_ENTER))
+            }
+        } else if (onBufferTextChange != null) {
+            onBufferTextChange(currentBufferText + "\n")
         }
     }
 
@@ -489,14 +511,7 @@ fun KeyboardRootView(
                                             if (dragDelta > 15f) moveCursorInternal(1)
                                             else if (dragDelta < -15f) moveCursorInternal(-1)
                                         },
-                                        onEnterPress = {
-                                            triggerKeyEffect()
-                                            if (activeComposingToken.isNotEmpty()) {
-                                                commitTextInternal(teluguSug.ifEmpty { activeComposingToken })
-                                                activeComposingToken = ""
-                                            }
-                                            commitTextInternal("\n")
-                                        },
+                                        onEnterPress = handleEnterPress,
                                         onSwitchToSymbols = { layoutMode = KeyboardLayoutMode.SYMBOLS },
                                         onSwitchLayout = {
                                             layoutMode = if (layoutMode == KeyboardLayoutMode.TENGLISH) {
@@ -547,10 +562,7 @@ fun KeyboardRootView(
                                             if (dragDelta > 15f) moveCursorInternal(1)
                                             else if (dragDelta < -15f) moveCursorInternal(-1)
                                         },
-                                        onEnterPress = {
-                                            triggerKeyEffect()
-                                            commitTextInternal("\n")
-                                        },
+                                        onEnterPress = handleEnterPress,
                                         onSwitchToSymbols = { layoutMode = KeyboardLayoutMode.SYMBOLS },
                                         onSwitchLayout = { layoutMode = KeyboardLayoutMode.TENGLISH },
                                         onDismissKeyboard = onDismissKeyboard
@@ -573,10 +585,7 @@ fun KeyboardRootView(
                                             triggerKeyEffect()
                                             commitTextInternal(" ")
                                         },
-                                        onEnter = {
-                                            triggerKeyEffect()
-                                            commitTextInternal("\n")
-                                        },
+                                        onEnter = handleEnterPress,
                                         onSwitchToKeyboard = { layoutMode = KeyboardLayoutMode.TENGLISH }
                                     )
                                 }
@@ -610,10 +619,7 @@ fun KeyboardRootView(
                                             if (dragDelta > 15f) moveCursorInternal(1)
                                             else if (dragDelta < -15f) moveCursorInternal(-1)
                                         },
-                                        onEnterPress = {
-                                            triggerKeyEffect()
-                                            commitTextInternal("\n")
-                                        },
+                                        onEnterPress = handleEnterPress,
                                         onSwitchToLetters = { layoutMode = KeyboardLayoutMode.TENGLISH }
                                     )
                                 }

@@ -6,16 +6,21 @@
     <subtype
         android:label="@string/subtype_tenglish"
         android:imeSubtypeLocale="te_IN"
+        android:languageTag="te-IN"
         android:imeSubtypeMode="keyboard"
+        android:isAsciiCapable="true"
         android:imeSubtypeExtraValue="KeyboardType=Tenglish" />
     <subtype
         android:label="@string/subtype_inscript"
         android:imeSubtypeLocale="te_IN"
+        android:languageTag="te-IN"
         android:imeSubtypeMode="keyboard"
         android:imeSubtypeExtraValue="KeyboardType=InScript" />
     <subtype
         android:label="@string/subtype_english"
         android:imeSubtypeLocale="en_US"
+        android:languageTag="en-US"
         android:imeSubtypeMode="keyboard"
+        android:isAsciiCapable="true"
         android:imeSubtypeExtraValue="KeyboardType=English" />
 </input-method>

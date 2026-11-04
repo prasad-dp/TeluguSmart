@@ -5,9 +5,11 @@ import android.content.Context
 import android.inputmethodservice.InputMethodService
 import android.text.InputType
 import android.view.inputmethod.EditorInfo
+import android.view.inputmethod.InputConnection
 import android.view.View
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.ui.platform.ComposeView
 import androidx.compose.ui.platform.ViewCompositionStrategy
 import androidx.lifecycle.Lifecycle
@@ -35,6 +37,9 @@ class TeluguSmartImeService : InputMethodService(), LifecycleOwner, SavedStateRe
     private val savedStateRegistryController = SavedStateRegistryController.create(this)
     private val mViewModelStore = ViewModelStore()
     private val serviceScope = CoroutineScope(SupervisorJob() + Dispatchers.Main)
+
+    private val inputConnectionState = mutableStateOf<InputConnection?>(null)
+    private val editorInfoState = mutableStateOf<EditorInfo?>(null)
 
     override val lifecycle: Lifecycle get() = lifecycleRegistry
     override val savedStateRegistry: SavedStateRegistry get() = savedStateRegistryController.savedStateRegistry
@@ -69,6 +74,75 @@ class TeluguSmartImeService : InputMethodService(), LifecycleOwner, SavedStateRe
         } catch (_: Throwable) {}
     }
 
+    override fun onEvaluateInputViewShown(): Boolean {
+        super.onEvaluateInputViewShown()
+        return true
+    }
+
+    override fun onShowInputRequested(flags: Int, configChange: Boolean): Boolean {
+        return true
+    }
+
+    override fun onEvaluateFullscreenMode(): Boolean {
+        return false
+    }
+
+    override fun onStartInput(attribute: EditorInfo?, restarting: Boolean) {
+        super.onStartInput(attribute, restarting)
+        inputConnectionState.value = currentInputConnection
+        editorInfoState.value = attribute
+    }
+
+    override fun onStartInputView(info: EditorInfo?, restarting: Boolean) {
+        super.onStartInputView(info, restarting)
+        inputConnectionState.value = currentInputConnection
+        editorInfoState.value = info
+        if (!lifecycleRegistry.currentState.isAtLeast(Lifecycle.State.STARTED)) {
+            lifecycleRegistry.handleLifecycleEvent(Lifecycle.Event.ON_START)
+        }
+        if (!lifecycleRegistry.currentState.isAtLeast(Lifecycle.State.RESUMED)) {
+            lifecycleRegistry.handleLifecycleEvent(Lifecycle.Event.ON_RESUME)
+        }
+    }
+
+    override fun onWindowShown() {
+        super.onWindowShown()
+        inputConnectionState.value = currentInputConnection
+        editorInfoState.value = currentInputEditorInfo
+        if (!lifecycleRegistry.currentState.isAtLeast(Lifecycle.State.STARTED)) {
+            lifecycleRegistry.handleLifecycleEvent(Lifecycle.Event.ON_START)
+        }
+        if (!lifecycleRegistry.currentState.isAtLeast(Lifecycle.State.RESUMED)) {
+            lifecycleRegistry.handleLifecycleEvent(Lifecycle.Event.ON_RESUME)
+        }
+    }
+
+    override fun onFinishInput() {
+        super.onFinishInput()
+        inputConnectionState.value = null
+        editorInfoState.value = null
+    }
+
+    override fun onFinishInputView(finishingInput: Boolean) {
+        super.onFinishInputView(finishingInput)
+        if (lifecycleRegistry.currentState.isAtLeast(Lifecycle.State.RESUMED)) {
+            lifecycleRegistry.handleLifecycleEvent(Lifecycle.Event.ON_PAUSE)
+        }
+        if (lifecycleRegistry.currentState.isAtLeast(Lifecycle.State.STARTED)) {
+            lifecycleRegistry.handleLifecycleEvent(Lifecycle.Event.ON_STOP)
+        }
+    }
+
+    override fun onWindowHidden() {
+        super.onWindowHidden()
+        if (lifecycleRegistry.currentState.isAtLeast(Lifecycle.State.RESUMED)) {
+            lifecycleRegistry.handleLifecycleEvent(Lifecycle.Event.ON_PAUSE)
+        }
+        if (lifecycleRegistry.currentState.isAtLeast(Lifecycle.State.STARTED)) {
+            lifecycleRegistry.handleLifecycleEvent(Lifecycle.Event.ON_STOP)
+        }
+    }
+
     override fun onCreateInputView(): View {
         if (!lifecycleRegistry.currentState.isAtLeast(Lifecycle.State.STARTED)) {
             lifecycleRegistry.handleLifecycleEvent(Lifecycle.Event.ON_START)
@@ -76,6 +150,9 @@ class TeluguSmartImeService : InputMethodService(), LifecycleOwner, SavedStateRe
         if (!lifecycleRegistry.currentState.isAtLeast(Lifecycle.State.RESUMED)) {
             lifecycleRegistry.handleLifecycleEvent(Lifecycle.Event.ON_RESUME)
         }
+
+        inputConnectionState.value = currentInputConnection
+        editorInfoState.value = currentInputEditorInfo
 
         val composeView = ComposeView(this).apply {
             setViewTreeLifecycleOwner(this@TeluguSmartImeService)
@@ -87,10 +164,16 @@ class TeluguSmartImeService : InputMethodService(), LifecycleOwner, SavedStateRe
                 val app = application as? TeluguSmartApplication ?: return@setContent
                 val prefs by app.repository.preferences.collectAsState()
                 val snippets by app.repository.clipboardSnippets.collectAsState(initial = emptyList())
+                val activeConnection by inputConnectionState
+                val activeEditorInfo by editorInfoState
 
                 KeyboardRootView(
                     preferences = prefs,
-                    inputConnection = currentInputConnection,
+                    inputConnection = activeConnection,
+                    editorInfo = activeEditorInfo,
+                    onDismissKeyboard = {
+                        requestHideSelf(0)
+                    },
                     clipboardSnippets = snippets,
                     onSaveClipboardText = { text ->
                         serviceScope.launch {
@@ -114,7 +197,7 @@ class TeluguSmartImeService : InputMethodService(), LifecycleOwner, SavedStateRe
                     },
                     onLearnUserWord = { telugu, phonetic ->
                         try {
-                            val attribute = currentInputEditorInfo
+                            val attribute = activeEditorInfo ?: currentInputEditorInfo
                             val isNoLearning = attribute != null && (attribute.imeOptions and EditorInfo.IME_FLAG_NO_PERSONALIZED_LEARNING != 0)
                             val inputType = attribute?.inputType ?: 0
                             val isPassword = (inputType and InputType.TYPE_MASK_VARIATION) == InputType.TYPE_TEXT_VARIATION_PASSWORD ||
@@ -133,46 +216,6 @@ class TeluguSmartImeService : InputMethodService(), LifecycleOwner, SavedStateRe
             }
         }
         return composeView
-    }
-
-    override fun onStartInputView(info: EditorInfo?, restarting: Boolean) {
-        super.onStartInputView(info, restarting)
-        if (!lifecycleRegistry.currentState.isAtLeast(Lifecycle.State.STARTED)) {
-            lifecycleRegistry.handleLifecycleEvent(Lifecycle.Event.ON_START)
-        }
-        if (!lifecycleRegistry.currentState.isAtLeast(Lifecycle.State.RESUMED)) {
-            lifecycleRegistry.handleLifecycleEvent(Lifecycle.Event.ON_RESUME)
-        }
-    }
-
-    override fun onWindowShown() {
-        super.onWindowShown()
-        if (!lifecycleRegistry.currentState.isAtLeast(Lifecycle.State.STARTED)) {
-            lifecycleRegistry.handleLifecycleEvent(Lifecycle.Event.ON_START)
-        }
-        if (!lifecycleRegistry.currentState.isAtLeast(Lifecycle.State.RESUMED)) {
-            lifecycleRegistry.handleLifecycleEvent(Lifecycle.Event.ON_RESUME)
-        }
-    }
-
-    override fun onFinishInputView(finishingInput: Boolean) {
-        super.onFinishInputView(finishingInput)
-        if (lifecycleRegistry.currentState.isAtLeast(Lifecycle.State.RESUMED)) {
-            lifecycleRegistry.handleLifecycleEvent(Lifecycle.Event.ON_PAUSE)
-        }
-        if (lifecycleRegistry.currentState.isAtLeast(Lifecycle.State.STARTED)) {
-            lifecycleRegistry.handleLifecycleEvent(Lifecycle.Event.ON_STOP)
-        }
-    }
-
-    override fun onWindowHidden() {
-        super.onWindowHidden()
-        if (lifecycleRegistry.currentState.isAtLeast(Lifecycle.State.RESUMED)) {
-            lifecycleRegistry.handleLifecycleEvent(Lifecycle.Event.ON_PAUSE)
-        }
-        if (lifecycleRegistry.currentState.isAtLeast(Lifecycle.State.STARTED)) {
-            lifecycleRegistry.handleLifecycleEvent(Lifecycle.Event.ON_STOP)
-        }
     }
 
     override fun onDestroy() {
