@@ -1,9 +1,11 @@
 package com.example.ui.screens
-import androidx.compose.ui.draw.scale
 
 import android.widget.Toast
+import androidx.compose.foundation.BorderStroke
+import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
@@ -12,10 +14,14 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.HelpOutline
+import androidx.compose.material.icons.automirrored.filled.VolumeUp
 import androidx.compose.material.icons.filled.AutoAwesome
 import androidx.compose.material.icons.filled.ChevronRight
 import androidx.compose.material.icons.filled.DeleteOutline
@@ -23,14 +29,15 @@ import androidx.compose.material.icons.filled.EmojiEmotions
 import androidx.compose.material.icons.filled.Gesture
 import androidx.compose.material.icons.filled.GridOn
 import androidx.compose.material.icons.filled.Height
-import androidx.compose.material.icons.filled.HelpOutline
 import androidx.compose.material.icons.filled.Keyboard
 import androidx.compose.material.icons.filled.Palette
+import androidx.compose.material.icons.filled.PhoneAndroid
 import androidx.compose.material.icons.filled.Star
-import androidx.compose.material.icons.filled.VolumeUp
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
+import androidx.compose.material3.FilterChip
+import androidx.compose.material3.FilterChipDefaults
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
@@ -49,6 +56,8 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.scale
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.platform.LocalContext
@@ -61,13 +70,13 @@ import com.example.data.KeyboardPreferences
 import com.example.data.KeyboardSoundProfile
 import com.example.data.OneHandedMode
 import com.example.engine.SoundFeedbackHelper
-import androidx.compose.material.icons.filled.PhoneAndroid
-import androidx.compose.material3.FilterChip
-import androidx.compose.material3.FilterChipDefaults
+import com.example.ui.theme.DarkBorder
+import com.example.ui.theme.LightBorder
 
 data class SettingItem(
     val id: String,
     val title: String,
+    val subtitle: String? = null,
     val icon: ImageVector,
     val iconTint: Color
 )
@@ -99,138 +108,189 @@ fun SettingsScreen(
     var oneHandedMode by remember { mutableStateOf(preferences.oneHandedMode) }
     var keyBorderEnabled by remember { mutableStateOf(preferences.keyBorderEnabled) }
 
-    val settingItems = listOf(
-        SettingItem("themes", "Themes", Icons.Default.Palette, Color(0xFF0D9488)),
-        SettingItem("key_borders", "Show key borders", Icons.Default.GridOn, Color(0xFF047857)),
-        SettingItem("effects", "Key tap effects & animations", Icons.Default.AutoAwesome, Color(0xFF059669)),
-        SettingItem("height", "Keyboard height", Icons.Default.Height, Color(0xFF0D9488)),
-        SettingItem("one_handed", "One-handed mode & layout", Icons.Default.PhoneAndroid, Color(0xFF059669)),
-        SettingItem("sound", "Sound & vibration feedback", Icons.Default.VolumeUp, Color(0xFF0D9488)),
-        SettingItem("emojis", "Emojis, numbers & symbols", Icons.Default.EmojiEmotions, Color(0xFF059669)),
-        SettingItem("typing", "Typing & Next-word prediction", Icons.Default.Keyboard, Color(0xFF0D9488)),
-        SettingItem("gestures", "Handwriting & Glide typing", Icons.Default.Gesture, Color(0xFF059669)),
-        SettingItem("premium", "Premium", Icons.Default.Star, Color(0xFF0D9488)),
-        SettingItem("clear_data", "Clear data", Icons.Default.DeleteOutline, Color(0xFF059669)),
-        SettingItem("help", "Help", Icons.Default.HelpOutline, Color(0xFF0D9488))
+    // Color tokens
+    val brandEmerald = if (isDarkMode) Color(0xFF10B981) else Color(0xFF047857)
+    val brandTeal = if (isDarkMode) Color(0xFF2DD4BF) else Color(0xFF0D9488)
+    val cardBorder = if (isDarkMode) DarkBorder else LightBorder
+
+    // Semantic Section Groups
+    val appearanceGroup = listOf(
+        SettingItem("themes", "Themes & Wallpapers", "Customize keyboard background & colors", Icons.Default.Palette, brandTeal),
+        SettingItem("key_borders", "Show Key Borders", if (keyBorderEnabled) "On • Outlines visible" else "Off • Borderless keys", Icons.Default.GridOn, brandEmerald),
+        SettingItem("height", "Keyboard Height", "${currentHeightPercent}% Scale", Icons.Default.Height, brandTeal),
+        SettingItem("effects", "Tap Effects & Particle Animations", "Neon glow, ripple & heart effects", Icons.Default.AutoAwesome, brandEmerald)
     )
+
+    val typingGroup = listOf(
+        SettingItem("typing", "Typing & Next-Word Prediction", "Suggestions, transliteration & auto-caps", Icons.Default.Keyboard, brandTeal),
+        SettingItem("gestures", "Handwriting & Glide Typing", "Swipe trail & gesture composition", Icons.Default.Gesture, brandEmerald)
+    )
+
+    val soundGroup = listOf(
+        SettingItem("sound", "Sound & Vibration Feedback", if (soundEnabled || hapticEnabled) "Active • Click & haptics" else "Silent mode", Icons.AutoMirrored.Filled.VolumeUp, brandTeal)
+    )
+
+    val layoutGroup = listOf(
+        SettingItem("one_handed", "One-Handed Mode & Docking", when (oneHandedMode) {
+            OneHandedMode.OFF -> "Full Width"
+            OneHandedMode.LEFT -> "Left Hand Docked"
+            OneHandedMode.RIGHT -> "Right Hand Docked"
+        }, Icons.Default.PhoneAndroid, brandEmerald),
+        SettingItem("emojis", "Emojis, Numbers & Symbols", if (numberRowEnabled) "Number row enabled" else "Standard layout", Icons.Default.EmojiEmotions, brandTeal)
+    )
+
+    val dataGroup = listOf(
+        SettingItem("premium", "TeluguSmart Premium", "100% Free & Unlocked for all users", Icons.Default.Star, brandTeal),
+        SettingItem("clear_data", "Clear Learned Words", "Reset personal dictionary & cache", Icons.Default.DeleteOutline, Color(0xFFEF4444)),
+        SettingItem("help", "Help & User Guide", "Telugu typing tips & shortcuts", Icons.AutoMirrored.Filled.HelpOutline, brandEmerald)
+    )
+
+    @Composable
+    fun SettingsGroupCard(
+        title: String,
+        items: List<SettingItem>
+    ) {
+        Column(modifier = Modifier.fillMaxWidth()) {
+            Text(
+                text = title,
+                fontSize = 12.5.sp,
+                fontWeight = FontWeight.Bold,
+                color = brandEmerald,
+                letterSpacing = 0.5.sp,
+                modifier = Modifier.padding(start = 8.dp, top = 14.dp, bottom = 6.dp)
+            )
+
+            Card(
+                colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
+                shape = RoundedCornerShape(18.dp),
+                border = BorderStroke(1.dp, cardBorder),
+                elevation = CardDefaults.cardElevation(defaultElevation = 1.5.dp),
+                modifier = Modifier.fillMaxWidth()
+            ) {
+                Column(modifier = Modifier.fillMaxWidth()) {
+                    items.forEachIndexed { index, item ->
+                        val isBorderSetting = item.id == "key_borders"
+                        Row(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .clickable {
+                                    when (item.id) {
+                                        "themes", "effects" -> onNavigateToThemes()
+                                        "key_borders" -> {
+                                            val newSetting = !keyBorderEnabled
+                                            keyBorderEnabled = newSetting
+                                            onUpdatePreferences(preferences.copy(keyBorderEnabled = newSetting))
+                                            Toast.makeText(
+                                                context,
+                                                if (newSetting) "Key borders enabled" else "Key borders disabled",
+                                                Toast.LENGTH_SHORT
+                                            ).show()
+                                        }
+                                        else -> activeDialog = item.id
+                                    }
+                                }
+                                .padding(horizontal = 16.dp, vertical = 12.dp)
+                                .testTag("setting_row_${item.id}"),
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.SpaceBetween
+                        ) {
+                            Row(
+                                verticalAlignment = Alignment.CenterVertically,
+                                horizontalArrangement = Arrangement.spacedBy(14.dp),
+                                modifier = Modifier.weight(1f, fill = false)
+                            ) {
+                                Box(
+                                    modifier = Modifier
+                                        .size(38.dp)
+                                        .clip(RoundedCornerShape(10.dp))
+                                        .background(item.iconTint.copy(alpha = 0.12f)),
+                                    contentAlignment = Alignment.Center
+                                ) {
+                                    Icon(
+                                        imageVector = item.icon,
+                                        contentDescription = item.title,
+                                        tint = item.iconTint,
+                                        modifier = Modifier.size(20.dp)
+                                    )
+                                }
+
+                                Column {
+                                    Text(
+                                        text = item.title,
+                                        fontSize = 14.5.sp,
+                                        fontWeight = FontWeight.SemiBold,
+                                        color = MaterialTheme.colorScheme.onSurface
+                                    )
+                                    if (item.subtitle != null) {
+                                        Text(
+                                            text = item.subtitle,
+                                            fontSize = 11.5.sp,
+                                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                            modifier = Modifier.padding(top = 1.dp)
+                                        )
+                                    }
+                                }
+                            }
+
+                            if (isBorderSetting) {
+                                Switch(
+                                    checked = keyBorderEnabled,
+                                    onCheckedChange = { checked ->
+                                        keyBorderEnabled = checked
+                                        onUpdatePreferences(preferences.copy(keyBorderEnabled = checked))
+                                        Toast.makeText(
+                                            context,
+                                            if (checked) "Key borders enabled" else "Key borders disabled",
+                                            Toast.LENGTH_SHORT
+                                        ).show()
+                                    },
+                                    colors = SwitchDefaults.colors(
+                                        checkedTrackColor = brandEmerald,
+                                        checkedThumbColor = Color.White,
+                                        uncheckedTrackColor = if (isDarkMode) Color(0xFF334155) else Color(0xFFCBD5E1),
+                                        uncheckedThumbColor = Color.White
+                                    ),
+                                    modifier = Modifier
+                                        .scale(0.72f)
+                                        .testTag("switch_setting_key_borders")
+                                )
+                            } else {
+                                Icon(
+                                    imageVector = Icons.Default.ChevronRight,
+                                    contentDescription = "Open",
+                                    tint = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.5f),
+                                    modifier = Modifier.size(20.dp)
+                                )
+                            }
+                        }
+
+                        if (index < items.size - 1) {
+                            HorizontalDivider(
+                                color = cardBorder.copy(alpha = 0.6f),
+                                modifier = Modifier.padding(start = 68.dp, end = 16.dp)
+                            )
+                        }
+                    }
+                }
+            }
+        }
+    }
 
     Column(
         modifier = Modifier
             .fillMaxSize()
             .verticalScroll(scrollState)
-            .padding(start = 16.dp, end = 16.dp, top = 12.dp, bottom = 120.dp)
-            .testTag("settings_screen_container")
+            .padding(start = 16.dp, end = 16.dp, top = 8.dp, bottom = 120.dp)
+            .testTag("settings_screen_container"),
+        verticalArrangement = Arrangement.spacedBy(10.dp)
     ) {
-        Card(
-            colors = CardDefaults.cardColors(
-                containerColor = MaterialTheme.colorScheme.surface
-            ),
-            shape = RoundedCornerShape(16.dp),
-            border = androidx.compose.foundation.BorderStroke(
-                1.dp,
-                if (isDarkMode) Color(0xFF334155) else Color(0xFFE2E8F0)
-            ),
-            elevation = CardDefaults.cardElevation(defaultElevation = 1.dp),
-            modifier = Modifier.fillMaxWidth()
-        ) {
-            Column(modifier = Modifier.fillMaxWidth()) {
-                settingItems.forEachIndexed { index, item ->
-                    val isBorderSetting = item.id == "key_borders"
-                    Row(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .clickable {
-                                when (item.id) {
-                                    "themes", "effects" -> onNavigateToThemes()
-                                    "key_borders" -> {
-                                        val newSetting = !keyBorderEnabled
-                                        keyBorderEnabled = newSetting
-                                        onUpdatePreferences(preferences.copy(keyBorderEnabled = newSetting))
-                                        Toast.makeText(
-                                            context,
-                                            if (newSetting) "Key borders enabled" else "Key borders disabled",
-                                            Toast.LENGTH_SHORT
-                                        ).show()
-                                    }
-                                    else -> activeDialog = item.id
-                                }
-                            }
-                            .padding(horizontal = 18.dp, vertical = if (isBorderSetting) 10.dp else 14.dp)
-                            .testTag("setting_row_${item.id}"),
-                        verticalAlignment = Alignment.CenterVertically,
-                        horizontalArrangement = Arrangement.SpaceBetween
-                    ) {
-                        Row(
-                            verticalAlignment = Alignment.CenterVertically,
-                            horizontalArrangement = Arrangement.spacedBy(16.dp),
-                            modifier = Modifier.weight(1f, fill = false)
-                        ) {
-                            Icon(
-                                imageVector = item.icon,
-                                contentDescription = item.title,
-                                tint = item.iconTint,
-                                modifier = Modifier.size(22.dp)
-                            )
-                            Column {
-                                Text(
-                                    text = item.title,
-                                    fontSize = 15.sp,
-                                    fontWeight = FontWeight.Medium,
-                                    color = MaterialTheme.colorScheme.onSurface
-                                )
-                                if (isBorderSetting) {
-                                    Text(
-                                        text = if (keyBorderEnabled) "On • Key outlines visible" else "Off • Borderless keys",
-                                        fontSize = 11.5.sp,
-                                        color = MaterialTheme.colorScheme.onSurfaceVariant
-                                    )
-                                }
-                            }
-                        }
+        SettingsGroupCard("🎨 APPEARANCE & THEME (రూపురేఖలు & థీమ్)", appearanceGroup)
+        SettingsGroupCard("⌨️ TYPING & LANGUAGE (టైపింగ్ & భాష)", typingGroup)
+        SettingsGroupCard("🔊 SOUND & VIBRATION (ధ్వని & వైబ్రేషన్)", soundGroup)
+        SettingsGroupCard("📱 LAYOUT & KEYS (కీబోర్డ్ లేఅవుట్)", layoutGroup)
+        SettingsGroupCard("🛡️ DATA & SUPPORT (సహాయం & డేటా)", dataGroup)
 
-                        if (isBorderSetting) {
-                            Switch(
-                                checked = keyBorderEnabled,
-                                onCheckedChange = { checked ->
-                                    keyBorderEnabled = checked
-                                    onUpdatePreferences(preferences.copy(keyBorderEnabled = checked))
-                                    Toast.makeText(
-                                        context,
-                                        if (checked) "Key borders enabled" else "Key borders disabled",
-                                        Toast.LENGTH_SHORT
-                                    ).show()
-                                },
-                                colors = SwitchDefaults.colors(
-                                    checkedTrackColor = Color(0xFF047857),
-                                    checkedThumbColor = Color.White,
-                                    uncheckedTrackColor = if (isDarkMode) Color(0xFF334155) else Color(0xFFCBD5E1),
-                                    uncheckedThumbColor = Color.White
-                                ),
-                                modifier = Modifier
-                                    .scale(0.72f)
-                                    .testTag("switch_setting_key_borders")
-                            )
-                        } else {
-                            Icon(
-                                imageVector = Icons.Default.ChevronRight,
-                                contentDescription = "Open",
-                                tint = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.5f),
-                                modifier = Modifier.size(20.dp)
-                            )
-                        }
-                    }
-
-                    if (index < settingItems.size - 1) {
-                        HorizontalDivider(
-                            color = if (isDarkMode) Color(0xFF334155).copy(alpha = 0.5f) else Color(0xFFF1F5F9),
-                            modifier = Modifier.padding(start = 56.dp)
-                        )
-                    }
-                }
-            }
-        }
-
-        Spacer(modifier = Modifier.height(30.dp))
+        Spacer(modifier = Modifier.height(20.dp))
     }
 
     // Modal Dialogs for Setting Controls
@@ -251,8 +311,8 @@ fun SettingsScreen(
                             onValueChange = { currentHeightPercent = it.toInt() },
                             valueRange = 80f..130f,
                             colors = SliderDefaults.colors(
-                                thumbColor = Color(0xFF047857),
-                                activeTrackColor = Color(0xFF047857)
+                                thumbColor = brandEmerald,
+                                activeTrackColor = brandEmerald
                             )
                         )
                     }
@@ -263,7 +323,7 @@ fun SettingsScreen(
                         activeDialog = null
                         Toast.makeText(context, "Keyboard height saved", Toast.LENGTH_SHORT).show()
                     }) {
-                        Text("Save", color = Color(0xFF047857), fontWeight = FontWeight.Bold)
+                        Text("Save", color = brandEmerald, fontWeight = FontWeight.Bold)
                     }
                 },
                 dismissButton = {
@@ -304,7 +364,7 @@ fun SettingsScreen(
                                         )
                                     },
                                     colors = FilterChipDefaults.filterChipColors(
-                                        selectedContainerColor = Color(0xFF047857),
+                                        selectedContainerColor = brandEmerald,
                                         selectedLabelColor = Color.White
                                     ),
                                     modifier = Modifier
@@ -321,7 +381,7 @@ fun SettingsScreen(
                         activeDialog = null
                         Toast.makeText(context, "Layout preference saved", Toast.LENGTH_SHORT).show()
                     }) {
-                        Text("Save", color = Color(0xFF047857), fontWeight = FontWeight.Bold)
+                        Text("Save", color = brandEmerald, fontWeight = FontWeight.Bold)
                     }
                 },
                 dismissButton = {
@@ -352,13 +412,12 @@ fun SettingsScreen(
                                     soundEnabled = it
                                     if (it) SoundFeedbackHelper.playKeySound(soundProfile, soundVolume)
                                 },
-                                colors = SwitchDefaults.colors(checkedTrackColor = Color(0xFF047857)),
+                                colors = SwitchDefaults.colors(checkedTrackColor = brandEmerald),
                                 modifier = Modifier.scale(0.75f)
                             )
                         }
 
                         if (soundEnabled) {
-                            // Dedicated Volume Control Slider for Keypress Sound
                             Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
                                 Row(
                                     modifier = Modifier.fillMaxWidth(),
@@ -375,7 +434,7 @@ fun SettingsScreen(
                                         text = "${(soundVolume * 100).toInt()}%",
                                         fontSize = 12.5.sp,
                                         fontWeight = FontWeight.Bold,
-                                        color = Color(0xFF047857)
+                                        color = brandEmerald
                                     )
                                 }
                                 Slider(
@@ -388,8 +447,8 @@ fun SettingsScreen(
                                     },
                                     valueRange = 0.10f..1.00f,
                                     colors = SliderDefaults.colors(
-                                        thumbColor = Color(0xFF047857),
-                                        activeTrackColor = Color(0xFF047857)
+                                        thumbColor = brandEmerald,
+                                        activeTrackColor = brandEmerald
                                     )
                                 )
                             }
@@ -416,7 +475,7 @@ fun SettingsScreen(
                                             )
                                         },
                                         colors = FilterChipDefaults.filterChipColors(
-                                            selectedContainerColor = Color(0xFF047857),
+                                            selectedContainerColor = brandEmerald,
                                             selectedLabelColor = Color.White
                                         ),
                                         modifier = Modifier.fillMaxWidth()
@@ -425,7 +484,7 @@ fun SettingsScreen(
                             }
                         }
 
-                        HorizontalDivider()
+                        HorizontalDivider(color = cardBorder.copy(alpha = 0.5f))
 
                         Row(
                             modifier = Modifier.fillMaxWidth(),
@@ -439,7 +498,7 @@ fun SettingsScreen(
                                     hapticEnabled = it
                                     if (it) SoundFeedbackHelper.triggerHaptic(hapticStrength)
                                 },
-                                colors = SwitchDefaults.colors(checkedTrackColor = Color(0xFF047857)),
+                                colors = SwitchDefaults.colors(checkedTrackColor = brandEmerald),
                                 modifier = Modifier.scale(0.75f)
                             )
                         }
@@ -468,7 +527,7 @@ fun SettingsScreen(
                                             )
                                         },
                                         colors = FilterChipDefaults.filterChipColors(
-                                            selectedContainerColor = Color(0xFF047857),
+                                            selectedContainerColor = brandEmerald,
                                             selectedLabelColor = Color.White
                                         )
                                     )
@@ -489,7 +548,7 @@ fun SettingsScreen(
                         activeDialog = null
                         Toast.makeText(context, "Sound & vibration preferences saved", Toast.LENGTH_SHORT).show()
                     }) {
-                        Text("Save", color = Color(0xFF047857), fontWeight = FontWeight.Bold)
+                        Text("Save", color = brandEmerald, fontWeight = FontWeight.Bold)
                     }
                 },
                 dismissButton = {
@@ -513,8 +572,8 @@ fun SettingsScreen(
                         Switch(
                             checked = numberRowEnabled,
                             onCheckedChange = { numberRowEnabled = it },
-                            colors = SwitchDefaults.colors(checkedTrackColor = Color(0xFF047857)),
-                                modifier = Modifier.scale(0.75f)
+                            colors = SwitchDefaults.colors(checkedTrackColor = brandEmerald),
+                            modifier = Modifier.scale(0.75f)
                         )
                     }
                 },
@@ -523,7 +582,7 @@ fun SettingsScreen(
                         onUpdatePreferences(preferences.copy(showNumberRow = numberRowEnabled))
                         activeDialog = null
                     }) {
-                        Text("Done", color = Color(0xFF047857))
+                        Text("Done", color = brandEmerald)
                     }
                 }
             )
@@ -543,7 +602,7 @@ fun SettingsScreen(
                             Switch(
                                 checked = nextWordPredictionEnabled,
                                 onCheckedChange = { nextWordPredictionEnabled = it },
-                                colors = SwitchDefaults.colors(checkedTrackColor = Color(0xFF047857)),
+                                colors = SwitchDefaults.colors(checkedTrackColor = brandEmerald),
                                 modifier = Modifier.scale(0.75f)
                             )
                         }
@@ -556,7 +615,7 @@ fun SettingsScreen(
                             Switch(
                                 checked = autoTranslitEnabled,
                                 onCheckedChange = { autoTranslitEnabled = it },
-                                colors = SwitchDefaults.colors(checkedTrackColor = Color(0xFF047857)),
+                                colors = SwitchDefaults.colors(checkedTrackColor = brandEmerald),
                                 modifier = Modifier.scale(0.75f)
                             )
                         }
@@ -569,7 +628,7 @@ fun SettingsScreen(
                             Switch(
                                 checked = autoCapEnabled,
                                 onCheckedChange = { autoCapEnabled = it },
-                                colors = SwitchDefaults.colors(checkedTrackColor = Color(0xFF047857)),
+                                colors = SwitchDefaults.colors(checkedTrackColor = brandEmerald),
                                 modifier = Modifier.scale(0.75f)
                             )
                         }
@@ -584,7 +643,7 @@ fun SettingsScreen(
                         ))
                         activeDialog = null
                     }) {
-                        Text("Done", color = Color(0xFF047857))
+                        Text("Done", color = brandEmerald)
                     }
                 }
             )
@@ -604,7 +663,7 @@ fun SettingsScreen(
                             Switch(
                                 checked = glideTypingEnabled,
                                 onCheckedChange = { glideTypingEnabled = it },
-                                colors = SwitchDefaults.colors(checkedTrackColor = Color(0xFF047857)),
+                                colors = SwitchDefaults.colors(checkedTrackColor = brandEmerald),
                                 modifier = Modifier.scale(0.75f)
                             )
                         }
@@ -620,7 +679,7 @@ fun SettingsScreen(
                         onUpdatePreferences(preferences.copy(glideTypingEnabled = glideTypingEnabled))
                         activeDialog = null
                     }) {
-                        Text("Done", color = Color(0xFF047857))
+                        Text("Done", color = brandEmerald)
                     }
                 }
             )
@@ -634,7 +693,7 @@ fun SettingsScreen(
                 },
                 confirmButton = {
                     TextButton(onClick = { activeDialog = null }) {
-                        Text("Awesome!", color = Color(0xFF047857))
+                        Text("Awesome!", color = brandEmerald)
                     }
                 }
             )
@@ -675,7 +734,7 @@ fun SettingsScreen(
                 },
                 confirmButton = {
                     TextButton(onClick = { activeDialog = null }) {
-                        Text("Got it", color = Color(0xFF047857))
+                        Text("Got it", color = brandEmerald)
                     }
                 }
             )

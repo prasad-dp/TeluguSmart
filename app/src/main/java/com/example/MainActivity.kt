@@ -9,6 +9,7 @@ import androidx.activity.ComponentActivity
 import androidx.activity.compose.BackHandler
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
+import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -30,9 +31,12 @@ import androidx.compose.material.icons.filled.LightMode
 import androidx.compose.material.icons.filled.MoreVert
 import androidx.compose.material.icons.filled.Palette
 import androidx.compose.material.icons.filled.Settings
+import androidx.compose.material.icons.filled.Share
+import androidx.compose.material.icons.filled.RestartAlt
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
@@ -71,6 +75,8 @@ import com.example.ui.screens.HomeScreen
 import com.example.ui.screens.SettingsScreen
 import com.example.ui.screens.SetupWizardScreen
 import com.example.ui.screens.ThemePickerScreen
+import com.example.ui.theme.DarkBorder
+import com.example.ui.theme.LightBorder
 import com.example.ui.theme.MyApplicationTheme
 import kotlinx.coroutines.launch
 
@@ -167,36 +173,55 @@ class MainActivity : ComponentActivity() {
                                 title = {
                                     Row(
                                         verticalAlignment = Alignment.CenterVertically,
-                                        horizontalArrangement = Arrangement.spacedBy(10.dp)
+                                        horizontalArrangement = Arrangement.spacedBy(12.dp)
                                     ) {
                                         TeluguSmartLogo(
-                                            size = 36.dp,
+                                            size = 38.dp,
                                             showText = false,
+                                            border = BorderStroke(
+                                                1.dp,
+                                                if (isDarkMode) DarkBorder else LightBorder
+                                            ),
+                                            elevation = 2.dp,
                                             modifier = Modifier.testTag("app_bar_icon")
                                         )
-                                        Text(
-                                            text = "TeluguSmart Keyboard",
-                                            fontSize = 18.sp,
-                                            fontWeight = FontWeight.Bold,
-                                            color = MaterialTheme.colorScheme.onSurface
-                                        )
+                                        Column {
+                                            Text(
+                                                text = "TeluguSmart",
+                                                fontSize = 17.sp,
+                                                fontWeight = FontWeight.Bold,
+                                                color = MaterialTheme.colorScheme.onSurface,
+                                                letterSpacing = 0.2.sp
+                                            )
+                                            Text(
+                                                text = "తెలుగు కీబోర్డ్ • Smart & Fast",
+                                                fontSize = 11.sp,
+                                                fontWeight = FontWeight.Medium,
+                                                color = if (isDarkMode) Color(0xFF10B981) else Color(0xFF059669)
+                                            )
+                                        }
                                     }
                                 },
                                 actions = {
-                                    // Dark Mode Toggle on EVERY page as requested!
+                                    // Dark Mode Toggle with 48dp minimum touch target
                                     IconButton(
                                         onClick = toggleDarkMode,
-                                        modifier = Modifier.testTag("top_bar_dark_mode_toggle")
+                                        modifier = Modifier
+                                            .size(48.dp)
+                                            .testTag("top_bar_dark_mode_toggle")
                                     ) {
                                         Icon(
                                             imageVector = if (isDarkMode) Icons.Default.LightMode else Icons.Default.DarkMode,
                                             contentDescription = "Toggle Light/Dark Theme",
-                                            tint = if (isDarkMode) Color(0xFFFBBF24) else Color(0xFF0F172A)
+                                            tint = if (isDarkMode) Color(0xFFFBBF24) else Color(0xFF475569)
                                         )
                                     }
 
                                     Box {
-                                        IconButton(onClick = { showMenu = true }) {
+                                        IconButton(
+                                            onClick = { showMenu = true },
+                                            modifier = Modifier.size(48.dp)
+                                        ) {
                                             Icon(
                                                 imageVector = Icons.Default.MoreVert,
                                                 contentDescription = "More Options",
@@ -209,6 +234,13 @@ class MainActivity : ComponentActivity() {
                                             onDismissRequest = { showMenu = false }
                                         ) {
                                             DropdownMenuItem(
+                                                leadingIcon = {
+                                                    Icon(
+                                                        imageVector = Icons.Default.RestartAlt,
+                                                        contentDescription = null,
+                                                        tint = if (isDarkMode) Color(0xFF10B981) else Color(0xFF059669)
+                                                    )
+                                                },
                                                 text = { Text("Re-run Setup Wizard") },
                                                 onClick = {
                                                     showMenu = false
@@ -216,6 +248,13 @@ class MainActivity : ComponentActivity() {
                                                 }
                                             )
                                             DropdownMenuItem(
+                                                leadingIcon = {
+                                                    Icon(
+                                                        imageVector = Icons.Default.Share,
+                                                        contentDescription = null,
+                                                        tint = if (isDarkMode) Color(0xFF10B981) else Color(0xFF059669)
+                                                    )
+                                                },
                                                 text = { Text("Share Keyboard") },
                                                 onClick = {
                                                     showMenu = false
@@ -247,8 +286,8 @@ class MainActivity : ComponentActivity() {
                         bottomBar = {
                             NavigationBar(
                                 containerColor = MaterialTheme.colorScheme.surface,
-                                tonalElevation = 6.dp,
-                                modifier = Modifier.height(68.dp)
+                                tonalElevation = 4.dp,
+                                modifier = Modifier.height(72.dp)
                             ) {
                                 MainTab.entries.forEach { tab ->
                                     val isSelected = currentTab == tab
@@ -259,7 +298,7 @@ class MainActivity : ComponentActivity() {
                                             Icon(
                                                 imageVector = tab.icon,
                                                 contentDescription = tab.title,
-                                                modifier = Modifier.size(22.dp)
+                                                modifier = Modifier.size(24.dp)
                                             )
                                         },
                                         label = {
@@ -270,9 +309,11 @@ class MainActivity : ComponentActivity() {
                                             )
                                         },
                                         colors = NavigationBarItemDefaults.colors(
-                                            selectedIconColor = Color(0xFF047857),
-                                            selectedTextColor = Color(0xFF047857),
-                                            indicatorColor = if (isDarkMode) Color(0xFF064E3B) else Color(0xFFD1FAE5)
+                                            selectedIconColor = if (isDarkMode) Color(0xFF10B981) else Color(0xFF047857),
+                                            selectedTextColor = if (isDarkMode) Color(0xFF10B981) else Color(0xFF047857),
+                                            indicatorColor = if (isDarkMode) Color(0xFF064E3B) else Color(0xFFD1FAE5),
+                                            unselectedIconColor = if (isDarkMode) Color(0xFF94A3B8) else Color(0xFF64748B),
+                                            unselectedTextColor = if (isDarkMode) Color(0xFF94A3B8) else Color(0xFF64748B)
                                         ),
                                         modifier = Modifier.testTag(tab.testTag)
                                     )

@@ -384,6 +384,11 @@ fun SetupWizardScreen(
                 TeluguSmartLogo(
                     size = 120.dp,
                     showText = false,
+                    border = androidx.compose.foundation.BorderStroke(
+                        1.dp,
+                        (if (isDarkMode) Color(0xFF10B981) else BrandPrimary).copy(alpha = 0.25f)
+                    ),
+                    elevation = 8.dp,
                     modifier = Modifier
                         .scale(logoScale)
                         .testTag("setup_app_logo")

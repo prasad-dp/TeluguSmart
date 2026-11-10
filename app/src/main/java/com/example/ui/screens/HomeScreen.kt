@@ -406,6 +406,11 @@ fun HomeScreen(
                             com.example.ui.components.TeluguSmartLogo(
                                 size = 88.dp,
                                 showText = false,
+                                border = androidx.compose.foundation.BorderStroke(
+                                    1.dp,
+                                    (if (isDarkMode) Color(0xFF10B981) else BrandPrimary).copy(alpha = 0.25f)
+                                ),
+                                elevation = 6.dp,
                                 modifier = Modifier
                                     .scale(logoScale)
                                     .testTag("home_app_logo")
@@ -634,10 +639,10 @@ fun HomeScreen(
                     colors = CardDefaults.cardColors(
                         containerColor = MaterialTheme.colorScheme.surface
                     ),
-                    shape = RoundedCornerShape(16.dp),
+                    shape = RoundedCornerShape(18.dp),
                     border = androidx.compose.foundation.BorderStroke(
                         1.5.dp,
-                        if (isDarkMode) Color(0xFF10B981).copy(alpha = 0.4f) else Color(0xFF00684A).copy(alpha = 0.35f)
+                        if (isDarkMode) Color(0xFF10B981).copy(alpha = 0.4f) else BrandPrimary.copy(alpha = 0.35f)
                     ),
                     elevation = CardDefaults.cardElevation(defaultElevation = 2.dp),
                     modifier = Modifier
@@ -1015,9 +1020,10 @@ fun LayoutPreviewCard(
     isDarkMode: Boolean,
     onClick: () -> Unit
 ) {
+    val activeEmerald = if (isDarkMode) Color(0xFF10B981) else BrandPrimary
     val cardScale by animateFloatAsState(
-        targetValue = if (isSelected) 1.03f else 1.0f,
-        animationSpec = tween(durationMillis = 250, easing = EaseInOutCubic),
+        targetValue = if (isSelected) 1.02f else 1.0f,
+        animationSpec = tween(durationMillis = 200, easing = EaseInOutCubic),
         label = "card_selection_scale"
     )
 
@@ -1029,16 +1035,16 @@ fun LayoutPreviewCard(
             .testTag("layout_card_${layout.id}"),
         horizontalAlignment = Alignment.CenterHorizontally
     ) {
-        // Keyboard Preview Box matching previous version
+        // Keyboard Preview Box with refined Material 3 rounding and borders
         Box(
             modifier = Modifier
                 .fillMaxWidth()
-                .height(115.dp)
-                .clip(RoundedCornerShape(10.dp))
+                .height(118.dp)
+                .clip(RoundedCornerShape(14.dp))
                 .border(
-                    width = if (isSelected) 1.5.dp else 1.dp,
-                    color = if (isSelected) Color(0xFF00684A) else if (isDarkMode) Color(0xFF334155) else Color(0xFFCBD5E1),
-                    shape = RoundedCornerShape(10.dp)
+                    width = if (isSelected) 2.dp else 1.dp,
+                    color = if (isSelected) activeEmerald else if (isDarkMode) DarkBorder else LightBorder,
+                    shape = RoundedCornerShape(14.dp)
                 )
         ) {
             when (layout.id) {
@@ -1050,30 +1056,22 @@ fun LayoutPreviewCard(
                 else -> TranslitMockup(modifier = Modifier.fillMaxSize())
             }
 
-            // Green Diagonal Corner Ribbon with Checkmark
+            // High-Contrast Corner Badge with Checkmark
             if (isSelected) {
                 Box(
                     modifier = Modifier
                         .align(Alignment.BottomEnd)
-                        .size(32.dp)
+                        .padding(6.dp)
+                        .size(24.dp)
+                        .clip(CircleShape)
+                        .background(activeEmerald),
+                    contentAlignment = Alignment.Center
                 ) {
-                    Canvas(modifier = Modifier.fillMaxSize()) {
-                        val path = Path().apply {
-                            moveTo(size.width, 0f)
-                            lineTo(size.width, size.height)
-                            lineTo(0f, size.height)
-                            close()
-                        }
-                        drawPath(path, color = Color(0xFF00684A))
-                    }
                     Icon(
                         imageVector = Icons.Default.Check,
                         contentDescription = "Selected",
                         tint = Color.White,
-                        modifier = Modifier
-                            .align(Alignment.BottomEnd)
-                            .padding(end = 2.dp, bottom = 2.dp)
-                            .size(15.dp)
+                        modifier = Modifier.size(16.dp)
                     )
                 }
             }
@@ -1081,24 +1079,35 @@ fun LayoutPreviewCard(
 
         Spacer(modifier = Modifier.height(6.dp))
 
-        // Bottom Pill Button
+        // Bottom Tonal Pill Button
         Surface(
             modifier = Modifier.fillMaxWidth(),
-            shape = RoundedCornerShape(8.dp),
-            color = if (isSelected) Color(0xFF00684A) else if (isDarkMode) Color(0xFF1E293B) else Color(0xFFFFFFFF),
+            shape = RoundedCornerShape(10.dp),
+            color = if (isSelected) {
+                if (isDarkMode) Color(0xFF064E3B) else Color(0xFFD1FAE5)
+            } else {
+                if (isDarkMode) Color(0xFF1E293B) else Color(0xFFFFFFFF)
+            },
             border = if (!isSelected) androidx.compose.foundation.BorderStroke(
                 1.dp,
-                if (isDarkMode) Color(0xFF334155) else Color(0xFFCBD5E1)
-            ) else null,
-            shadowElevation = if (isSelected) 2.dp else 0.dp
+                if (isDarkMode) DarkBorder else LightBorder
+            ) else androidx.compose.foundation.BorderStroke(
+                1.dp,
+                activeEmerald.copy(alpha = 0.5f)
+            ),
+            shadowElevation = if (isSelected) 1.dp else 0.dp
         ) {
             Text(
                 text = layout.title,
                 fontSize = 12.5.sp,
-                fontWeight = FontWeight.Bold,
+                fontWeight = if (isSelected) FontWeight.Bold else FontWeight.SemiBold,
                 textAlign = TextAlign.Center,
-                color = if (isSelected) Color.White else if (isDarkMode) Color(0xFFF1F5F9) else Color(0xFF0F172A),
-                modifier = Modifier.padding(vertical = 6.dp)
+                color = if (isSelected) {
+                    if (isDarkMode) Color(0xFF10B981) else Color(0xFF047857)
+                } else {
+                    if (isDarkMode) Color(0xFFF1F5F9) else Color(0xFF0F172A)
+                },
+                modifier = Modifier.padding(vertical = 7.dp)
             )
         }
     }
